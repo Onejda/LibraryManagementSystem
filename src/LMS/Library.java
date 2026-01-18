@@ -590,16 +590,15 @@ public class Library {
 
         // Load Loans
         ArrayList<Object[]> loanData = dbManager.loadAllLoans();
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
         for (Object[] data : loanData) {
             int loanId = (Integer) data[0];
             int borrowerId = (Integer) data[1];
             int bookId = (Integer) data[2];
             int issuerId = (Integer) data[3];
-            String issDateStr = (String) data[4];
+            Long issDateLong = (Long) data[4];
             Object receiverObj = data[5];
-            String retDateStr = (String) data[6];
+            Long retDateLong = (Long) data[6];
             boolean finePaid = (Boolean) data[7];
 
             Borrower borrower = findBorrowerById(borrowerId);
@@ -609,26 +608,12 @@ public class Library {
             Date issDate = null;
             Date retDate = null;
 
-            try {
-                if (issDateStr != null) {
-                    issDate = sdf.parse(issDateStr);
-                }
-                if (retDateStr != null) {
-                    retDate = sdf.parse(retDateStr);
-                }
-            } catch (ParseException e) {
-                // Try alternate format
-                try {
-                    SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
-                    if (issDateStr != null) {
-                        issDate = sdf2.parse(issDateStr.split(" ")[0]);
-                    }
-                    if (retDateStr != null) {
-                        retDate = sdf2.parse(retDateStr.split(" ")[0]);
-                    }
-                } catch (ParseException ex) {
-                    issDate = new Date();
-                }
+            // Convert Long timestamps to Date objects
+            if (issDateLong != null && issDateLong != 0) {
+                issDate = new Date(issDateLong);
+            }
+            if (retDateLong != null && retDateLong != 0) {
+                retDate = new Date(retDateLong);
             }
 
             if (receiverObj != null) {
@@ -653,23 +638,19 @@ public class Library {
 
         // Load Hold Requests
         ArrayList<Object[]> holdData = dbManager.loadAllHoldRequests();
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
         for (Object[] data : holdData) {
             int bookId = (Integer) data[1];
             int borrowerId = (Integer) data[2];
-            String reqDateStr = (String) data[3];
+            Long reqDateLong = (Long) data[3];
 
             Borrower borrower = findBorrowerById(borrowerId);
             Book book = findBookById(bookId);
             Date reqDate = null;
 
-            try {
-                if (reqDateStr != null) {
-                    reqDate = dateFormat.parse(reqDateStr);
-                }
-            } catch (ParseException e) {
-                reqDate = new Date();
+            // Convert Long timestamp to Date object
+            if (reqDateLong != null && reqDateLong != 0) {
+                reqDate = new Date(reqDateLong);
             }
 
             if (borrower != null && book != null && reqDate != null) {

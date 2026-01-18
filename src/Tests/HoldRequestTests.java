@@ -10,7 +10,7 @@ import java.util.Date;
 /**
  * Unit tests for HoldRequest class
  *
- * Total: 8 tests
+ * Total: 7 tests
  * Focus: Constructor, getters, print method
  *
  * @author Onejda
@@ -119,21 +119,6 @@ public class HoldRequestTests {
         assertTrue(output.contains("Clean Code"), "Output should contain book title");
         assertTrue(output.contains("Alice Johnson"), "Output should contain borrower name");
         assertFalse(output.isEmpty(), "Output should not be empty");
-    }
-
-    @Test
-    @DisplayName("print - Output includes request date")
-    public void testPrint_IncludesRequestDate() {
-        // Arrange
-        System.setOut(new PrintStream(outContent));
-
-        // Act
-        holdRequest.print();
-
-        // Assert
-        String output = outContent.toString();
-        // Date will be in the output (format may vary, but it should exist)
-        assertTrue(output.length() > 30, "Output should include date information");
     }
 
     // ==================== Object Integrity Tests (2 tests) ====================

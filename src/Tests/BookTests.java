@@ -11,7 +11,7 @@ import java.util.Date;
 /**
  * Unit tests for Book class
  *
- * Total: 18 tests
+ * Total: 20 tests
  *
  * @author Onejda
  */
@@ -62,7 +62,7 @@ public class BookTests {
         Person.setIDCount(0);
     }
 
-    // ==================== Constructor Tests (3 tests) ====================
+    // ==================== Constructor Tests (5 tests) ====================
 
     @Test
     @DisplayName("Constructor - Creates book with provided ID")
@@ -100,6 +100,29 @@ public class BookTests {
         // Assert
         assertTrue(book.getIssuedStatus(), "Issued status should be true");
     }
+
+    @Test
+    @DisplayName("Constructor - Should reject negative ID values (EXPECTED TO FAIL)")
+    void testConstructor_NegativeId_ShouldBeRejected() {
+        Book book = new Book(-5, "Invalid Book", "Invalid", "Invalid", false);
+
+        assertTrue(
+                book.getID() >= 0,
+                "Negative book IDs should not be accepted"
+        );
+    }
+
+    @Test
+    @DisplayName("Constructor - Should reject null title (EXPECTED TO FAIL)")
+    void testConstructor_NullTitle_ShouldBeRejected() {
+        Book book = new Book(1, null, "SE", "Author", false);
+
+        assertNotNull(
+                book.getTitle(),
+                "Book title should not be null"
+        );
+    }
+
 
     // ==================== Getter Methods Tests (5 tests) ====================
 
@@ -140,7 +163,6 @@ public class BookTests {
     }
 
     // ==================== setIssuedStatus() Tests (3 tests) ====================
-    // NOTE: These tests now work because we initialize the database in setUp()
 
     @Test
     @DisplayName("setIssuedStatus - Changes status from false to true")

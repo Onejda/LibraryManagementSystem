@@ -506,9 +506,11 @@ public class Library {
     }
 
     public void populateLibrary(Object con) throws IOException {
-        // Load Books
+
+        // ==================== Load Books ====================
         ArrayList<Object[]> bookData = dbManager.loadAllBooks();
         int maxBookId = 0;
+
         for (Object[] data : bookData) {
             int id = (Integer) data[0];
             String title = (String) data[1];
@@ -521,15 +523,17 @@ public class Library {
 
             if (id > maxBookId) maxBookId = id;
         }
+
         Book.setIDCount(maxBookId);
 
         if (bookData.isEmpty()) {
             System.out.println("No Books Found in Library");
         }
 
-        // Load Clerks
+        // ==================== Load Clerks ====================
         ArrayList<Object[]> clerkData = dbManager.loadAllClerks();
         int maxDeskNo = 0;
+
         for (Object[] data : clerkData) {
             int id = (Integer) data[0];
             String cname = (String) data[1];
@@ -543,33 +547,42 @@ public class Library {
 
             if (desk > maxDeskNo) maxDeskNo = desk;
         }
+
         Clerk.setDeskCount(maxDeskNo);
 
         if (clerkData.isEmpty()) {
             System.out.println("No clerks Found in Library");
         }
 
-        // Load Librarian
-        // Load Librarian
+        // ==================== Load Librarian ====================
         Object[] libData = dbManager.loadLibrarian();
+
         if (libData != null) {
             int id = (Integer) libData[0];
             String lname = (String) libData[1];
-            String password = (String) libData[2];
+            String password = (String) libData[2]; // password exists in DB
             String adrs = (String) libData[3];
             int phn = (Integer) libData[4];
             double sal = (Double) libData[5];
             int off = (Integer) libData[6];
 
             Librarian l = new Librarian(id, lname, adrs, phn, sal, off);
+
+            // IMPORTANT:
+            // Your Librarian constructor might auto-generate password.
+            // If you have a setter like setPassword(), set it here.
+            // If not, ignore this line.
+            // l.setPassword(password);
+
             librarian = l;
+
         } else {
             System.out.println("No Librarian Found in Library");
         }
 
-
-        // Load Borrowers
+        // ==================== Load Borrowers ====================
         ArrayList<Object[]> borrowerData = dbManager.loadAllBorrowers();
+
         for (Object[] data : borrowerData) {
             int id = (Integer) data[0];
             String bname = (String) data[1];
@@ -584,57 +597,47 @@ public class Library {
             System.out.println("No Borrower Found in Library");
         }
 
-        // Set Person ID Count
+        // ==================== Set Person ID Count ====================
         int maxPersonId = dbManager.getMaxPersonId();
         Person.setIDCount(maxPersonId);
 
-        // Load Loans
+        // ==================== Load Loans ====================
         ArrayList<Object[]> loanData = dbManager.loadAllLoans();
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
         for (Object[] data : loanData) {
             int loanId = (Integer) data[0];
             int borrowerId = (Integer) data[1];
             int bookId = (Integer) data[2];
             int issuerId = (Integer) data[3];
-            String issDateStr = (String) data[4];
-            Object receiverObj = data[5];
-            String retDateStr = (String) data[6];
+
+            Long issDateLong = (Long) data[4];       // issueDate millis (never null usually)
+            Integer receiverId = (Integer) data[5];  // can be null (ACTIVE loan)
+            Long retDateLong = (Long) data[6];       // can be null (ACTIVE loan)
             boolean finePaid = (Boolean) data[7];
 
             Borrower borrower = findBorrowerById(borrowerId);
             Book book = findBookById(bookId);
             Staff issuer = findStaffById(issuerId);
+
             Staff receiver = null;
             Date issDate = null;
             Date retDate = null;
 
-            try {
-                if (issDateStr != null) {
-                    issDate = sdf.parse(issDateStr);
-                }
-                if (retDateStr != null) {
-                    retDate = sdf.parse(retDateStr);
-                }
-            } catch (ParseException e) {
-                // Try alternate format
-                try {
-                    SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy-MM-dd");
-                    if (issDateStr != null) {
-                        issDate = sdf2.parse(issDateStr.split(" ")[0]);
-                    }
-                    if (retDateStr != null) {
-                        retDate = sdf2.parse(retDateStr.split(" ")[0]);
-                    }
-                } catch (ParseException ex) {
-                    issDate = new Date();
-                }
+            // Convert timestamps to Date safely
+            if (issDateLong != null && issDateLong != 0) {
+                issDate = new Date(issDateLong);
             }
 
-            if (receiverObj != null) {
-                receiver = findStaffById((Integer) receiverObj);
+            if (retDateLong != null && retDateLong != 0) {
+                retDate = new Date(retDateLong);
             }
 
+            // receiverId may be null if NOT returned
+            if (receiverId != null) {
+                receiver = findStaffById(receiverId);
+            }
+
+            // Only create loan if required objects exist
             if (borrower != null && book != null && issuer != null) {
                 Loan loan = new Loan(borrower, book, issuer, receiver, issDate, retDate, finePaid);
                 loan.setLoanId(loanId);
@@ -651,25 +654,21 @@ public class Library {
             System.out.println("No Books Issued Yet!");
         }
 
-        // Load Hold Requests
+        // ==================== Load Hold Requests ====================
         ArrayList<Object[]> holdData = dbManager.loadAllHoldRequests();
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
         for (Object[] data : holdData) {
+            // data: [id, bookId, borrowerId, requestDate]
             int bookId = (Integer) data[1];
             int borrowerId = (Integer) data[2];
-            String reqDateStr = (String) data[3];
+            Long reqDateLong = (Long) data[3];
 
             Borrower borrower = findBorrowerById(borrowerId);
             Book book = findBookById(bookId);
-            Date reqDate = null;
 
-            try {
-                if (reqDateStr != null) {
-                    reqDate = dateFormat.parse(reqDateStr);
-                }
-            } catch (ParseException e) {
-                reqDate = new Date();
+            Date reqDate = null;
+            if (reqDateLong != null && reqDateLong != 0) {
+                reqDate = new Date(reqDateLong);
             }
 
             if (borrower != null && book != null && reqDate != null) {
@@ -683,6 +682,7 @@ public class Library {
             System.out.println("No Books on Hold Yet!");
         }
     }
+
 
     public void fillItBack(Object con) {
         // Database is updated in real-time, no need to fill back

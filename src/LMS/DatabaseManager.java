@@ -708,7 +708,7 @@ public class DatabaseManager {
                 return new Object[]{
                         rs.getInt("id"),
                         rs.getString("name"),
-                        rs.getString("password"),   // ✅ IMPORTANT
+                        rs.getString("password"),
                         rs.getString("address"),
                         rs.getInt("phoneNo"),
                         rs.getDouble("salary"),
@@ -722,6 +722,4 @@ public class DatabaseManager {
 
         return null;
     }
-
-
 }

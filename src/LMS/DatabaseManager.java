@@ -175,7 +175,7 @@ public class DatabaseManager {
             int book3 = insertBook("Database Systems", "Ramez Elmasri", "Databases", true);
 
             /* ==================== LOAN ==================== */
-            /* Dates stored as TEXT (yyyy-MM-dd) */
+            /* Dates stored as INTEGER (milliseconds since epoch) */
 
             PreparedStatement loanStmt = conn.prepareStatement(
                     """
@@ -183,7 +183,7 @@ public class DatabaseManager {
                         borrowerId,
                         bookId,
                         issuerId,
-                        issuedDate,
+                        issueDate,
                         receiverId,
                         returnDate,
                         finePaid
@@ -193,22 +193,30 @@ public class DatabaseManager {
             );
 
             /* ---------- Active Loan (NOT returned) ---------- */
+            // 2026-01-10 as timestamp (8 days ago from 2026-01-18)
+            long issueDateLoan1 = System.currentTimeMillis() - (8L * 24 * 60 * 60 * 1000);
+
             loanStmt.setInt(1, 4);                 // borrowerId
             loanStmt.setInt(2, book1);             // bookId
             loanStmt.setInt(3, 2);                 // issuerId (clerk)
-            loanStmt.setString(4, "2026-01-10");   // issuedDate (TEXT)
+            loanStmt.setLong(4, issueDateLoan1);   // issueDate (INTEGER)
             loanStmt.setNull(5, java.sql.Types.INTEGER); // receiverId
-            loanStmt.setNull(6, java.sql.Types.VARCHAR); // returnDate
+            loanStmt.setNull(6, java.sql.Types.INTEGER); // returnDate
             loanStmt.setInt(7, 0);                 // finePaid = false
             loanStmt.executeUpdate();
 
             /* ---------- Returned Loan ---------- */
+            // 2026-01-05 as timestamp (13 days ago from 2026-01-18)
+            // 2026-01-12 as timestamp (6 days ago from 2026-01-18)
+            long issueDateLoan2 = System.currentTimeMillis() - (13L * 24 * 60 * 60 * 1000);
+            long returnDateLoan2 = System.currentTimeMillis() - (6L * 24 * 60 * 60 * 1000);
+
             loanStmt.setInt(1, 5);                 // borrowerId
             loanStmt.setInt(2, book3);             // bookId
             loanStmt.setInt(3, 3);                 // issuerId
-            loanStmt.setString(4, "2026-01-05");   // issuedDate
+            loanStmt.setLong(4, issueDateLoan2);   // issueDate
             loanStmt.setInt(5, 2);                 // receiverId
-            loanStmt.setString(6, "2026-01-12");   // returnDate
+            loanStmt.setLong(6, returnDateLoan2);  // returnDate
             loanStmt.setInt(7, 1);                 // finePaid = true
             loanStmt.executeUpdate();
 
@@ -222,9 +230,12 @@ public class DatabaseManager {
                     """
             );
 
+            // 2026-01-14 as timestamp (4 days ago from 2026-01-18)
+            long requestDate = System.currentTimeMillis() - (4L * 24 * 60 * 60 * 1000);
+
             holdStmt.setInt(1, book2);
             holdStmt.setInt(2, 5);
-            holdStmt.setString(3, "2026-01-14");
+            holdStmt.setLong(3, requestDate);
             holdStmt.executeUpdate();
 
             System.out.println("Database seeded successfully (ALL tables filled).");
@@ -641,14 +652,17 @@ public class DatabaseManager {
              ResultSet rs = st.executeQuery("SELECT * FROM Loan")) {
 
             while (rs.next()) {
+                Integer receiverId = (Integer) rs.getObject("receiverId"); // keeps NULL
+                Long returnDate = (Long) rs.getObject("returnDate");       // keeps NULL
+
                 list.add(new Object[]{
                         rs.getInt("id"),
                         rs.getInt("borrowerId"),
                         rs.getInt("bookId"),
                         rs.getInt("issuerId"),
                         rs.getLong("issueDate"),
-                        rs.getInt("receiverId"),
-                        rs.getLong("returnDate"),
+                        receiverId,
+                        returnDate,
                         rs.getInt("finePaid") == 1
                 });
             }
@@ -659,6 +673,7 @@ public class DatabaseManager {
 
         return list;
     }
+
 
     public ArrayList<Object[]> loadAllHoldRequests() {
         ArrayList<Object[]> list = new ArrayList<>();

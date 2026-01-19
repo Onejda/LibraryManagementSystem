@@ -33,7 +33,7 @@ import java.util.Date;
  *
  * @author Tesi
  */
-public class IntegrationTests {
+public class IntegrationTests_Tesi {
 
     private Library library;
     private DatabaseManager dbManager;

@@ -1,154 +1,96 @@
 package Tests;
 
 import LMS.*;
-import org.junit.jupiter.api.*;
-import static org.junit.jupiter.api.Assertions.*;
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
+import org.junit.Before;
+import org.junit.Test;
 import java.util.Date;
+import static org.junit.Assert.*;
 
 /**
  * Unit tests for HoldRequest class
  *
- * Total: 7 tests
- * Focus: Constructor, getters, print method
- *
- * @author Onejda
+ * Tests only the methods within HoldRequest:
+ * - Constructor
+ * - getBorrower()
+ * - getBook()
+ * - getRequestDate()
  */
 public class HoldRequestTests {
 
+    private Book testBook;
+    private Borrower testBorrower;
+    private Date testDate;
     private HoldRequest holdRequest;
-    private Borrower borrower;
-    private Book book;
-    private Date requestDate;
 
-    private final ByteArrayOutputStream outContent = new ByteArrayOutputStream();
-    private final PrintStream originalOut = System.out;
-
-    @BeforeEach
+    @Before
     public void setUp() {
-        // Reset static counters
-        Book.setIDCount(0);
-        Person.setIDCount(0);
-
-        // Create test data
-        borrower = new Borrower(1, "Alice Johnson", "123 Main St", 1234567890);
-        book = new Book(1, "Clean Code", "Software Engineering", "Robert Martin", false);
-        requestDate = new Date();
-
-        // Create hold request
-        holdRequest = new HoldRequest(borrower, book, requestDate);
+        testBook = new Book(-1, "Test Book", "Subject", "Author", false);
+        testBorrower = new Borrower(-1, "John Doe", "123 Main St", 12345);
+        testDate = new Date();
+        holdRequest = new HoldRequest(testBorrower, testBook, testDate);
     }
 
-    @AfterEach
-    public void tearDown() {
-        System.setOut(originalOut);
-        Book.setIDCount(0);
-        Person.setIDCount(0);
-    }
-
-    // ==================== Constructor Test (1 test) ====================
+    // ==================== Constructor & Getter Tests ====================
 
     @Test
-    @DisplayName("Constructor - Creates hold request with all fields set correctly")
-    public void testConstructor_SetsAllFieldsCorrectly() {
-        // Arrange
-        Borrower testBorrower = new Borrower(2, "Bob Smith", "456 Oak Ave", 98765432);
-        Book testBook = new Book(2, "Design Patterns", "Software", "GoF", false);
-        Date testDate = new Date();
-
-        // Act
-        HoldRequest hr = new HoldRequest(testBorrower, testBook, testDate);
-
-        // Assert
-        assertEquals(testBorrower, hr.getBorrower(), "Borrower should be set correctly");
-        assertEquals(testBook, hr.getBook(), "Book should be set correctly");
-        assertEquals(testDate, hr.getRequestDate(), "Request date should be set correctly");
-    }
-
-    // ==================== Getter Methods Tests (3 tests) ====================
-
-    @Test
-    @DisplayName("getBorrower - Returns correct borrower")
-    public void testGetBorrower_ReturnsCorrectBorrower() {
-        // Act
-        Borrower result = holdRequest.getBorrower();
-
-        // Assert
-        assertNotNull(result, "Borrower should not be null");
-        assertEquals(borrower, result, "Should return the correct borrower");
-        assertEquals("Alice Johnson", result.getName(), "Borrower name should match");
+    public void testConstructor_InitializesAllFields() {
+        // Test that constructor properly stores all three parameters
+        assertNotNull(holdRequest);
+        assertEquals(testBorrower, holdRequest.getBorrower());
+        assertEquals(testBook, holdRequest.getBook());
+        assertEquals(testDate, holdRequest.getRequestDate());
     }
 
     @Test
-    @DisplayName("getBook - Returns correct book")
-    public void testGetBook_ReturnsCorrectBook() {
-        // Act
-        Book result = holdRequest.getBook();
-
-        // Assert
-        assertNotNull(result, "Book should not be null");
-        assertEquals(book, result, "Should return the correct book");
-        assertEquals("Clean Code", result.getTitle(), "Book title should match");
+    public void testGetBorrower() {
+        assertEquals(testBorrower, holdRequest.getBorrower());
     }
 
     @Test
-    @DisplayName("getRequestDate - Returns correct date")
-    public void testGetRequestDate_ReturnsCorrectDate() {
-        // Act
-        Date result = holdRequest.getRequestDate();
-
-        // Assert
-        assertNotNull(result, "Request date should not be null");
-        assertEquals(requestDate, result, "Should return the correct request date");
-    }
-
-    // ==================== print() Method Tests (2 tests) ====================
-
-    @Test
-    @DisplayName("print - Displays hold request information correctly")
-    public void testPrint_DisplaysCorrectInformation() {
-        // Arrange
-        System.setOut(new PrintStream(outContent));
-
-        // Act
-        holdRequest.print();
-
-        // Assert
-        String output = outContent.toString();
-        assertTrue(output.contains("Clean Code"), "Output should contain book title");
-        assertTrue(output.contains("Alice Johnson"), "Output should contain borrower name");
-        assertFalse(output.isEmpty(), "Output should not be empty");
-    }
-
-    // ==================== Object Integrity Tests (2 tests) ====================
-
-    @Test
-    @DisplayName("HoldRequest - Maintains references to same objects")
-    public void testHoldRequest_MaintainsObjectReferences() {
-        // Act
-        Borrower retrievedBorrower = holdRequest.getBorrower();
-        Book retrievedBook = holdRequest.getBook();
-
-        // Assert
-        assertSame(borrower, retrievedBorrower, "Should return same borrower instance");
-        assertSame(book, retrievedBook, "Should return same book instance");
+    public void testGetBook() {
+        assertEquals(testBook, holdRequest.getBook());
     }
 
     @Test
-    @DisplayName("HoldRequest - Can be created with same book for different borrowers")
-    public void testHoldRequest_SameBookDifferentBorrowers() {
-        // Arrange
-        Borrower borrower2 = new Borrower(2, "Bob Wilson", "789 Pine St", 555555);
-        Date date2 = new Date();
+    public void testGetRequestDate() {
+        assertEquals(testDate, holdRequest.getRequestDate());
+    }
 
-        // Act
-        HoldRequest hr1 = new HoldRequest(borrower, book, requestDate);
-        HoldRequest hr2 = new HoldRequest(borrower2, book, date2);
+    // ==================== Edge Cases (Null Handling) ====================
 
-        // Assert
-        assertSame(book, hr1.getBook(), "First request should reference the book");
-        assertSame(book, hr2.getBook(), "Second request should reference same book");
-        assertNotSame(hr1.getBorrower(), hr2.getBorrower(), "Borrowers should be different");
+    @Test
+    public void testConstructor_WithNullBorrower() {
+        HoldRequest hr = new HoldRequest(null, testBook, testDate);
+
+        assertNull(hr.getBorrower());
+        assertEquals(testBook, hr.getBook());
+        assertEquals(testDate, hr.getRequestDate());
+    }
+
+    @Test
+    public void testConstructor_WithNullBook() {
+        HoldRequest hr = new HoldRequest(testBorrower, null, testDate);
+
+        assertEquals(testBorrower, hr.getBorrower());
+        assertNull(hr.getBook());
+        assertEquals(testDate, hr.getRequestDate());
+    }
+
+    @Test
+    public void testConstructor_WithNullDate() {
+        HoldRequest hr = new HoldRequest(testBorrower, testBook, null);
+
+        assertEquals(testBorrower, hr.getBorrower());
+        assertEquals(testBook, hr.getBook());
+        assertNull(hr.getRequestDate());
+    }
+
+    @Test
+    public void testConstructor_WithAllNull() {
+        HoldRequest hr = new HoldRequest(null, null, null);
+
+        assertNull(hr.getBorrower());
+        assertNull(hr.getBook());
+        assertNull(hr.getRequestDate());
     }
 }

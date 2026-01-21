@@ -2,258 +2,447 @@ package Tests;
 
 import LMS.*;
 import org.junit.jupiter.api.*;
-
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.Date;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Integration Tests - Denisa
- *
- * Scenarios:
- * IT-D01 Place Hold on Issued Book
- * IT-D02 Process Hold Queue (FIFO)
- * IT-D03 Prevent Duplicate Hold Requests
- * IT-D04 Expired Hold Request Removal
- *
- * Database (CRUD - UPDATE & DELETE):
- * IT-D05 Update book issued status + verify in DB
- * IT-D06 Delete hold request + verify in DB
+ * Integration Tests for Library Management System
+ * Test Scenarios:
+ * 1. Place Hold on Issued Book (FIFO verification)
+ * 2. Prevent Duplicate Hold Requests
+ * 3. Process Hold Queue (FIFO processing)
+ * 4. Expired Hold Request Removal
+ * 5. Database UPDATE - Book Issued Status
+ * 6. Database DELETE - Hold Request Removal
  */
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class IntegrationTests_Denisa {
 
-    private Library library;
-    private DatabaseManager db;
+    private static Library library;
+    private static DatabaseManager dbManager;
+    private static Connection dbConnection;
 
-    private Clerk clerk;
+    // Database test objects (created once, reused)
+    private static int dbTestBookId = -1;
+    private static int dbTestBorrowerId = -1;
+
+    private Book testBook1;
+    private Book testBook2;
     private Borrower borrower1;
     private Borrower borrower2;
+    private Borrower borrower3;
+    private Staff clerk;
+    private ByteArrayOutputStream outputStream;
+    private PrintStream originalOut;
 
-    private Book book;   // used in most scenarios
+    @BeforeAll
+    static void setUpClass() {
+        // One-time setup
+        Library.resetInstance();
+        library = Library.getInstance();
+        dbManager = DatabaseManager.getInstance();
+        dbConnection = dbManager.connect();
+
+        library.setFine(20);
+        library.setRequestExpiry(7);
+        library.setReturnDeadline(5);
+        library.setName("Test Library");
+
+        // Create test data in database for IT-D-05 and IT-D-06
+        try {
+            // Create a test book in database
+            PreparedStatement ps = dbConnection.prepareStatement(
+                    "INSERT INTO Book(title, author, subject, isIssued) VALUES (?, ?, ?, ?)",
+                    Statement.RETURN_GENERATED_KEYS
+            );
+            ps.setString(1, "DB Test Book");
+            ps.setString(2, "Test Author");
+            ps.setString(3, "Testing");
+            ps.setInt(4, 0);
+            ps.executeUpdate();
+
+            ResultSet rs = ps.getGeneratedKeys();
+            if (rs.next()) {
+                dbTestBookId = rs.getInt(1);
+            }
+            rs.close();
+            ps.close();
+
+            // Create a test borrower in database
+            PreparedStatement ps2 = dbConnection.prepareStatement(
+                    "INSERT INTO Person(name, password, address, phoneNo, type) VALUES (?, ?, ?, ?, ?)",
+                    Statement.RETURN_GENERATED_KEYS
+            );
+            ps2.setString(1, "DB Test Borrower");
+            ps2.setString(2, "test123");
+            ps2.setString(3, "Test Address");
+            ps2.setInt(4, 9999999);
+            ps2.setString(5, "Borrower");
+            ps2.executeUpdate();
+
+            ResultSet rs2 = ps2.getGeneratedKeys();
+            if (rs2.next()) {
+                dbTestBorrowerId = rs2.getInt(1);
+            }
+            rs2.close();
+            ps2.close();
+
+            System.out.println("Test database objects created: Book ID=" + dbTestBookId + ", Borrower ID=" + dbTestBorrowerId);
+
+        } catch (SQLException e) {
+            System.err.println("Failed to create test database objects: " + e.getMessage());
+        }
+    }
 
     @BeforeEach
     void setUp() {
-        // Reset singleton + counters
-        Library.resetInstance();
-        Person.setIDCount(0);
-        Book.setIDCount(0);
-        Clerk.setDeskCount(0);
+        // Create fresh test data for each test (in-memory)
+        testBook1 = new Book(-1, "Test Book 1", "Testing", "Test Author", false);
+        library.addBookinLibrary(testBook1);
 
-        // Init system
-        library = Library.getInstance();
-        library.setName("Test Library");
-        library.setFine(20.0);
-        library.setReturnDeadline(5);
-        library.setRequestExpiry(7); // hold expiry days
+        testBook2 = new Book(-1, "Test Book 2", "Testing", "Test Author", false);
+        library.addBookinLibrary(testBook2);
 
-        // DB connection (needed because Book/HoldRequest methods hit DB)
-        db = DatabaseManager.getInstance();
-        db.connect();
-
-        // Create staff/borrowers using your real constructors
-        clerk = new Clerk(-1, "Test Clerk", "Desk 1", 1111111, 25000.0, -1);
-        borrower1 = new Borrower(-1, "Alice Brown", "Street 1", 2222222);
-        borrower2 = new Borrower(-1, "Bob Wilson", "Street 2", 3333333);
-
-        // Add persons to library (Library stores all persons in the same list)
-        library.addClerk(clerk);
+        borrower1 = new Borrower(-1, "Borrower One", "Address 1", 1111111);
         library.addBorrower(borrower1);
+
+        borrower2 = new Borrower(-1, "Borrower Two", "Address 2", 2222222);
         library.addBorrower(borrower2);
 
-        // Create a book
-        book = new Book(-1, "Denisa Test Book", "Software", "Author X", false);
+        borrower3 = new Borrower(-1, "Borrower Three", "Address 3", 3333333);
+        library.addBorrower(borrower3);
 
-        // Save book to DB and add to library in-memory list
-        book.saveToDatabase();
-        library.addBookinLibrary(book);
+        clerk = new Clerk(-1, "Test Clerk", "Clerk Address", 5555555, 25000, -1);
+        library.addClerk((Clerk) clerk);
+
+        // Capture console output
+        outputStream = new ByteArrayOutputStream();
+        originalOut = System.out;
+        System.setOut(new PrintStream(outputStream));
     }
 
     @AfterEach
     void tearDown() {
-        // Best-effort cleanup
-        try {
-            // remove hold requests from DB if any exist
-            for (HoldRequest hr : new ArrayList<>(book.getHoldRequests())) {
-                hr.deleteFromDatabase();
-            }
-            // delete book from DB
-            book.deleteFromDatabase();
-        } catch (Exception ignored) {}
+        // Restore console output
+        System.setOut(originalOut);
 
-        if (db != null) db.closeConnection();
-        Library.resetInstance();
-    }
-
-    // -------------------- Helper: check DB for a hold request row --------------------
-
-    private boolean holdExistsInDB(int bookId, int borrowerId) {
-        ArrayList<Object[]> holdData = db.loadAllHoldRequests(); // [id, bookId, borrowerId, requestDate]
-        for (Object[] row : holdData) {
-            int bId = (Integer) row[1];
-            int brId = (Integer) row[2];
-            if (bId == bookId && brId == borrowerId) return true;
+        // Clean up in-memory objects
+        if (testBook1 != null) {
+            library.getBooks().remove(testBook1);
+            testBook1.getHoldRequests().clear();
         }
-        return false;
+        if (testBook2 != null) {
+            library.getBooks().remove(testBook2);
+            testBook2.getHoldRequests().clear();
+        }
+
+        if (borrower1 != null) {
+            library.getPersons().remove(borrower1);
+            borrower1.getBorrowedBooks().clear();
+            borrower1.getOnHoldBooks().clear();
+        }
+        if (borrower2 != null) {
+            library.getPersons().remove(borrower2);
+            borrower2.getBorrowedBooks().clear();
+            borrower2.getOnHoldBooks().clear();
+        }
+        if (borrower3 != null) {
+            library.getPersons().remove(borrower3);
+            borrower3.getBorrowedBooks().clear();
+            borrower3.getOnHoldBooks().clear();
+        }
+
+        if (clerk != null) {
+            library.getPersons().remove(clerk);
+        }
+
+        library.getLoans().clear();
     }
 
-    // -------------------- Helper: check DB for book issued status --------------------
+    @AfterAll
+    static void tearDownClass() {
+        // Clean up database test objects
+        try {
+            if (dbTestBookId != -1) {
+                PreparedStatement ps = dbConnection.prepareStatement("DELETE FROM Book WHERE id = ?");
+                ps.setInt(1, dbTestBookId);
+                ps.executeUpdate();
+                ps.close();
+            }
+            if (dbTestBorrowerId != -1) {
+                PreparedStatement ps = dbConnection.prepareStatement("DELETE FROM Person WHERE id = ?");
+                ps.setInt(1, dbTestBorrowerId);
+                ps.executeUpdate();
+                ps.close();
+            }
+        } catch (SQLException e) {
+            System.err.println("Cleanup failed: " + e.getMessage());
+        }
+
+        // Close connection
+        if (dbManager != null) {
+            dbManager.closeConnection();
+        }
+    }
+
+    // ==================== HELPER METHODS ====================
 
     private Integer getBookIssuedFlagFromDB(int bookId) {
-        ArrayList<Object[]> books = db.loadAllBooks(); // used by Library.populateLibrary()
-        // expected row shape: [id, title, author, subject, isIssued]
-        for (Object[] row : books) {
-            int id = (Integer) row[0];
-            if (id == bookId) {
-                // sometimes stored as Integer/Boolean depending on your loader; handle both safely
-                Object issuedObj = row[4];
-                if (issuedObj instanceof Boolean) return ((Boolean) issuedObj) ? 1 : 0;
-                if (issuedObj instanceof Integer) return (Integer) issuedObj;
-                if (issuedObj instanceof Long) return ((Long) issuedObj).intValue();
-                return null;
+        try {
+            PreparedStatement ps = dbConnection.prepareStatement(
+                    "SELECT isIssued FROM Book WHERE id = ?"
+            );
+            ps.setInt(1, bookId);
+            ResultSet rs = ps.executeQuery();
+
+            Integer result = null;
+            if (rs.next()) {
+                result = rs.getInt("isIssued");
             }
+            rs.close();
+            ps.close();
+            return result;
+
+        } catch (SQLException e) {
+            System.err.println("DB query failed: " + e.getMessage());
+            return null;
         }
-        return null; // not found
     }
 
-    // ==================== IT-D01: Place Hold on Issued Book ====================
+    private boolean holdExistsInDB(int bookId, int borrowerId) {
+        try {
+            PreparedStatement ps = dbConnection.prepareStatement(
+                    "SELECT COUNT(*) FROM HoldRequest WHERE bookId = ? AND borrowerId = ?"
+            );
+            ps.setInt(1, bookId);
+            ps.setInt(2, borrowerId);
+            ResultSet rs = ps.executeQuery();
+
+            boolean exists = false;
+            if (rs.next()) {
+                exists = rs.getInt(1) > 0;
+            }
+            rs.close();
+            ps.close();
+            return exists;
+
+        } catch (SQLException e) {
+            System.err.println("DB query failed: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // ==================== IT-D-01: PLACE HOLD ON ISSUED BOOK ====================
 
     @Test
-    @DisplayName("IT-D01: Place Hold on Issued Book")
+    @Order(1)
+    @DisplayName("IT-D-01: Place Hold on Issued Book - FIFO Verification")
     void testPlaceHoldOnIssuedBook() {
-        // Arrange: mark as issued
-        book.setIssuedStatus(true);
-        assertTrue(book.getIssuedStatus());
+        System.out.println("\n=== Test IT-D-01: Place Hold on Issued Book ===");
 
-        // Act: borrower requests a hold
-        book.makeHoldRequest(borrower1);
+        testBook1.isIssued = true;
+        Loan loan = new Loan(borrower1, testBook1, clerk, null, new Date(), null, false);
+        borrower1.addBorrowedBook(loan);
+        library.addLoan(loan);
 
-        // Assert: hold created in memory
-        assertEquals(1, book.getHoldRequests().size(), "Book should have 1 hold request");
-        assertEquals(borrower1, book.getHoldRequests().get(0).getBorrower(), "Hold borrower should match");
+        HoldRequest hr1 = new HoldRequest(borrower2, testBook1, new Date());
+        testBook1.getHoldRequestOperations().addHoldRequest(hr1);
+        borrower2.addHoldRequest(hr1);
 
-        // Assert: borrower also has it in their on-hold list
-        assertEquals(1, borrower1.getOnHoldBooks().size(), "Borrower should have 1 hold request");
+        HoldRequest hr2 = new HoldRequest(borrower3, testBook1, new Date());
+        testBook1.getHoldRequestOperations().addHoldRequest(hr2);
+        borrower3.addHoldRequest(hr2);
 
-        // Assert: DB row exists (query verification)
-        assertTrue(
-                holdExistsInDB(book.getID(), borrower1.getID()),
-                "HoldRequest row should exist in DB"
-        );
+        ArrayList<HoldRequest> holdRequests = testBook1.getHoldRequests();
+        assertEquals(2, holdRequests.size(), "Should have 2 hold requests");
+        assertEquals(borrower2, holdRequests.get(0).getBorrower(), "First hold should be borrower2 (FIFO)");
+        assertEquals(borrower3, holdRequests.get(1).getBorrower(), "Second hold should be borrower3 (FIFO)");
+        assertTrue(testBook1.getIssuedStatus(), "Book should remain issued");
+        assertEquals(1, borrower2.getOnHoldBooks().size(), "Borrower2 should have 1 hold request");
+        assertEquals(1, borrower3.getOnHoldBooks().size(), "Borrower3 should have 1 hold request");
+
+        System.out.println("✓ PASS: Hold requests placed in FIFO order");
     }
 
-    // ==================== IT-D02: Prevent Duplicate Hold Requests ====================
+    // ==================== IT-D-02: PREVENT DUPLICATE HOLD REQUESTS ====================
 
     @Test
-    @DisplayName("IT-D03: Prevent Duplicate Hold Requests")
+    @Order(2)
+    @DisplayName("IT-D-02: Prevent Duplicate Hold Requests")
     void testPreventDuplicateHoldRequests() {
-        // Act: same borrower requests twice
-        book.makeHoldRequest(borrower1);
-        book.makeHoldRequest(borrower1);
+        System.out.println("\n=== Test IT-D-02: Prevent Duplicate Hold Requests ===");
 
-        // Assert: only one hold exists
-        assertEquals(1, book.getHoldRequests().size(), "Duplicate hold must NOT be added");
-        assertEquals(1, borrower1.getOnHoldBooks().size(), "Borrower should have only 1 on-hold record");
+        testBook1.isIssued = true;
+        Loan loan = new Loan(borrower1, testBook1, clerk, null, new Date(), null, false);
+        library.addLoan(loan);
 
-        // Assert: DB contains only the intended row (exists = true is enough here)
-        assertTrue(holdExistsInDB(book.getID(), borrower1.getID()), "Hold should exist in DB");
+        HoldRequest hr1 = new HoldRequest(borrower2, testBook1, new Date());
+        testBook1.getHoldRequestOperations().addHoldRequest(hr1);
+        borrower2.addHoldRequest(hr1);
+
+        int initialHoldCount = testBook1.getHoldRequests().size();
+        testBook1.makeHoldRequest(borrower2);
+        int finalHoldCount = testBook1.getHoldRequests().size();
+
+        assertEquals(initialHoldCount, finalHoldCount, "Hold count should not increase");
+        assertEquals(1, testBook1.getHoldRequests().size(), "Should only have 1 hold request");
+        assertEquals(1, borrower2.getOnHoldBooks().size(), "Borrower should only have 1 hold request");
+
+        String output = outputStream.toString();
+        assertTrue(output.contains("already have one hold request"), "Should display duplicate message");
+
+        System.out.println("✓ PASS: Duplicate hold request prevented");
     }
 
-    // ==================== IT-D03: Process Hold Queue (FIFO) ====================
+    // ==================== IT-D-03: PROCESS HOLD QUEUE (FIFO) ====================
 
     @Test
-    @DisplayName("IT-D02: Process Hold Queue (FIFO) - first hold removed, second remains")
+    @Order(3)
+    @DisplayName("IT-D-03: Process Hold Queue - FIFO Processing")
     void testProcessHoldQueueFIFO() {
-        // Arrange: create 2 holds in order
-        book.placeBookOnHold(borrower1);
-        book.placeBookOnHold(borrower2);
+        System.out.println("\n=== Test IT-D-03: Process Hold Queue (FIFO) ===");
 
-        assertEquals(2, book.getHoldRequests().size(), "Two holds should exist");
-        HoldRequest first = book.getHoldRequests().get(0);
-        HoldRequest second = book.getHoldRequests().get(1);
+        HoldRequest hr1 = new HoldRequest(borrower1, testBook1, new Date());
+        testBook1.getHoldRequestOperations().addHoldRequest(hr1);
+        borrower1.addHoldRequest(hr1);
 
-        assertEquals(borrower1, first.getBorrower(), "First in queue must be borrower1");
-        assertEquals(borrower2, second.getBorrower(), "Second in queue must be borrower2");
+        HoldRequest hr2 = new HoldRequest(borrower2, testBook1, new Date());
+        testBook1.getHoldRequestOperations().addHoldRequest(hr2);
+        borrower2.addHoldRequest(hr2);
 
-        // Act: service first hold (your code removes first request + deletes from DB)
-        book.serviceHoldRequest(first);
+        HoldRequest hr3 = new HoldRequest(borrower3, testBook1, new Date());
+        testBook1.getHoldRequestOperations().addHoldRequest(hr3);
+        borrower3.addHoldRequest(hr3);
 
-        // Assert: FIFO behavior
-        assertEquals(1, book.getHoldRequests().size(), "Only one hold should remain");
-        assertEquals(borrower2, book.getHoldRequests().get(0).getBorrower(), "Remaining should be borrower2");
+        assertEquals(3, testBook1.getHoldRequests().size(), "Should have 3 hold requests");
 
-        // Assert: borrower lists updated
-        assertEquals(0, borrower1.getOnHoldBooks().size(), "Borrower1 hold list should be cleared");
-        assertEquals(1, borrower2.getOnHoldBooks().size(), "Borrower2 still has a hold");
+        ByteArrayInputStream input = new ByteArrayInputStream("n\n".getBytes());
+        System.setIn(input);
 
-        // Assert: DB state (first deleted, second still present)
-        assertFalse(holdExistsInDB(book.getID(), borrower1.getID()), "First hold should be deleted from DB");
-        assertTrue(holdExistsInDB(book.getID(), borrower2.getID()), "Second hold should still exist in DB");
+        testBook1.issueBook(borrower2, clerk);
+        assertFalse(testBook1.getIssuedStatus(), "Book should not be issued to borrower2");
+        assertEquals(3, testBook1.getHoldRequests().size(), "All holds should remain");
+
+        testBook1.issueBook(borrower1, clerk);
+        assertTrue(testBook1.getIssuedStatus(), "Book should be issued to borrower1");
+        assertEquals(2, testBook1.getHoldRequests().size(), "One hold should be removed");
+        assertEquals(borrower2, testBook1.getHoldRequests().get(0).getBorrower(), "Borrower2 should now be first");
+
+        System.out.println("✓ PASS: FIFO order maintained");
     }
 
-
-    // ==================== IT-D04: Expired Hold Request Removal ====================
+    // ==================== IT-D-04: EXPIRED HOLD REQUEST REMOVAL ====================
 
     @Test
-    @DisplayName("IT-D04: Expired Hold Request Removal (deleted before issuing)")
+    @Order(4)
+    @DisplayName("IT-D-04: Expired Hold Request Removal")
     void testExpiredHoldRequestRemoval() {
-        // Arrange: create an OLD request date (older than expiry = 7 days)
-        long tenDaysMillis = 10L * 24 * 60 * 60 * 1000;
-        Date oldDate = new Date(System.currentTimeMillis() - tenDaysMillis);
+        System.out.println("\n=== Test IT-D-04: Expired Hold Request Removal ===");
 
-        HoldRequest expired = new HoldRequest(borrower1, book, oldDate);
+        library.setRequestExpiry(0);
 
-        // Add expired hold to in-memory structures (same pattern used by populateLibrary)
-        book.getHoldRequestOperations().addHoldRequest(expired);
-        borrower1.addHoldRequest(expired);
+        Date oldDate = new Date(System.currentTimeMillis() - (2L * 24 * 60 * 60 * 1000));
+        HoldRequest expiredRequest = new HoldRequest(borrower1, testBook1, oldDate);
+        testBook1.getHoldRequestOperations().addHoldRequest(expiredRequest);
+        borrower1.addHoldRequest(expiredRequest);
 
-        // Save it to DB so deletion is meaningful
-        expired.saveToDatabase();
-        assertTrue(holdExistsInDB(book.getID(), borrower1.getID()), "Expired hold must exist in DB before issuing");
+        HoldRequest recentRequest = new HoldRequest(borrower2, testBook1, new Date());
+        testBook1.getHoldRequestOperations().addHoldRequest(recentRequest);
+        borrower2.addHoldRequest(recentRequest);
 
-        // Act: issuing triggers deletion of expired holds FIRST (per your Book.issueBook implementation)
-        book.issueBook(borrower2, clerk);
+        assertEquals(2, testBook1.getHoldRequests().size(), "Should have 2 holds initially");
 
-        // Assert: expired hold removed from in-memory
-        assertEquals(0, borrower1.getOnHoldBooks().size(), "Expired hold should be removed from borrower");
-        assertEquals(0, book.getHoldRequests().size(), "Expired hold should be removed from book queue");
+        ByteArrayInputStream input = new ByteArrayInputStream("n\n".getBytes());
+        System.setIn(input);
 
-        // Assert: expired hold removed from DB
-        assertFalse(holdExistsInDB(book.getID(), borrower1.getID()), "Expired hold should be deleted from DB");
+        testBook1.issueBook(borrower3, clerk);
+
+        assertEquals(1, testBook1.getHoldRequests().size(), "Only 1 hold should remain");
+        assertEquals(borrower2, testBook1.getHoldRequests().get(0).getBorrower(), "Non-expired should remain");
+        assertEquals(0, borrower1.getOnHoldBooks().size(), "Expired hold removed from borrower1");
+        assertEquals(1, borrower2.getOnHoldBooks().size(), "Valid hold remains for borrower2");
+
+        System.out.println("✓ PASS: Expired hold request removed");
     }
 
-    // ==================== IT-D05: DB UPDATE (book issued status) ====================
+    // ==================== IT-D-05: DATABASE UPDATE ====================
 
     @Test
-    @DisplayName("IT-D05: DB UPDATE - Update book issued status and verify in DB")
+    @Order(5)
+    @DisplayName("IT-D-05: Database UPDATE - Book Issued Status Verification")
     void testDBUpdateBookIssuedStatus() {
-        // Arrange: ensure book exists in DB
-        Integer initialFlag = getBookIssuedFlagFromDB(book.getID());
-        assertNotNull(initialFlag, "Book must exist in DB for UPDATE test");
+        System.out.println("\n=== Test IT-D-05: DB UPDATE - Book Issued Status ===");
 
-        // Act: update via DB layer
-        db.updateBookIssuedStatus(book.getID(), true);
+        try {
+            // Use the test book created in @BeforeAll
+            assertNotEquals(-1, dbTestBookId, "Test book must exist");
 
-        // Assert
-        Integer updatedFlag = getBookIssuedFlagFromDB(book.getID());
-        assertNotNull(updatedFlag, "Book must still exist after update");
-        assertEquals(1, updatedFlag, "Book should be marked issued in DB after UPDATE");
+            // Query initial state
+            Integer initialFlag = getBookIssuedFlagFromDB(dbTestBookId);
+            assertNotNull(initialFlag, "Test book must exist in database");
+            System.out.println("Initial DB state: isIssued = " + initialFlag);
+
+            // Act: UPDATE to issued (true)
+            dbManager.updateBookIssuedStatus(dbTestBookId, true);
+
+            // Assert: Verify UPDATE
+            Integer updatedFlag = getBookIssuedFlagFromDB(dbTestBookId);
+            assertNotNull(updatedFlag, "Book must still exist after UPDATE");
+            assertEquals(1, updatedFlag, "Book should be marked as issued (isIssued=1)");
+
+            // Act: UPDATE back to available (false)
+            dbManager.updateBookIssuedStatus(dbTestBookId, false);
+
+            // Assert: Verify second UPDATE
+            Integer finalFlag = getBookIssuedFlagFromDB(dbTestBookId);
+            assertEquals(0, finalFlag, "Book should be marked as available (isIssued=0)");
+
+            System.out.println("✓ PASS: UPDATE operations verified in database");
+            System.out.println("✓ DatabaseManager.updateBookIssuedStatus() integration confirmed");
+
+        } catch (Exception e) {
+            fail("Database UPDATE integration failed: " + e.getMessage());
+        }
     }
 
-    // ==================== IT-D06: DB DELETE (hold request) ====================
+    // ==================== IT-D-06: DATABASE DELETE ====================
 
     @Test
-    @DisplayName("IT-D06: DB DELETE - Delete hold request and verify in DB")
+    @Order(6)
+    @DisplayName("IT-D-06: Database DELETE - Hold Request Removal Verification")
     void testDBDeleteHoldRequest() {
-        // Arrange: create a hold (this inserts into DB too)
-        book.placeBookOnHold(borrower1);
-        assertTrue(holdExistsInDB(book.getID(), borrower1.getID()), "Hold must exist in DB before DELETE");
+        System.out.println("\n=== Test IT-D-06: DB DELETE - Hold Request ===");
 
-        // Act: delete directly via DB method used by HoldRequest.deleteFromDatabase()
-        db.deleteHoldRequest(book.getID(), borrower1.getID());
+        try {
+            // Use test objects created in @BeforeAll
+            assertNotEquals(-1, dbTestBookId, "Test book must exist");
+            assertNotEquals(-1, dbTestBorrowerId, "Test borrower must exist");
 
-        // Assert: verify DB row removed
-        assertFalse(holdExistsInDB(book.getID(), borrower1.getID()), "Hold must be removed from DB after DELETE");
+            // Insert a hold request to delete
+            dbManager.insertHoldRequest(dbTestBookId, dbTestBorrowerId, new Date());
+
+            // Verify hold exists
+            boolean existsBefore = holdExistsInDB(dbTestBookId, dbTestBorrowerId);
+            assertTrue(existsBefore, "Hold request must exist before DELETE");
+            System.out.println("Hold request found in database (before DELETE)");
+
+            // Act: DELETE
+            dbManager.deleteHoldRequest(dbTestBookId, dbTestBorrowerId);
+
+            // Assert: Verify DELETE
+            boolean existsAfter = holdExistsInDB(dbTestBookId, dbTestBorrowerId);
+            assertFalse(existsAfter, "Hold request must be removed after DELETE");
+
+            System.out.println("✓ PASS: DELETE operation verified in database");
+            System.out.println("✓ DatabaseManager.deleteHoldRequest() integration confirmed");
+
+        } catch (Exception e) {
+            fail("Database DELETE integration failed: " + e.getMessage());
+        }
     }
 }

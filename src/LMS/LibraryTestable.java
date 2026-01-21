@@ -25,7 +25,9 @@ public class LibraryTestable {
 
     /**
      * Testable version of searchForBooks
-     * @param choice The search type: "1" for title, "2" for subject, "3" for author
+     * 
+     * @param choice     The search type: "1" for title, "2" for subject, "3" for
+     *                   author
      * @param searchTerm The term to search for
      * @return ArrayList of matched books, or null if no matches found
      */
@@ -74,4 +76,76 @@ public class LibraryTestable {
             return null;
         }
     }
+
+    /*
+     * =====================================================
+     * TESTABLE VERSION OF createPerson(char)
+     * =====================================================
+     */
+
+    /**
+     * Testable version of createPerson(char)
+     *
+     * @param x       role selector ('c', 'l', or default borrower)
+     * @param name    person's name
+     * @param address person's address
+     * @param phone   phone number
+     * @param salary  salary (used only for staff)
+     * @return created Person object
+     */
+    public Person createPersonTestable(
+            char x,
+            String name,
+            String address,
+            int phone,
+            double salary) {
+
+        if (x == 'c') {
+            Clerk c = new Clerk(-1, name, address, phone, salary, -1);
+            return c;
+
+        } else if (x == 'l') {
+            Librarian l = new Librarian(-1, name, address, phone, salary, -1);
+            return l;
+
+        } else {
+            Borrower b = new Borrower(-1, name, address, phone);
+            return b;
+        }
+    }
+
+       /* =====================================================
+       TESTABLE VERSION OF login()
+       Uses Library's static librarian & persons
+       Removes Scanner dependency only
+       ===================================================== */
+
+    /**
+     * Testable version of login()
+     *
+     * @param id user ID
+     * @param password user password
+     * @return authenticated Person or null
+     */
+    public Person loginTestable(int id, String password) {
+
+        // Librarian authentication
+        if (Library.librarian != null) {
+            if (Library.librarian.getID() == id &&
+                    Library.librarian.getPassword().equals(password)) {
+                return Library.librarian;
+            }
+        }
+
+        // Borrower / Staff authentication
+        for (Person p : Library.persons) {
+            if (p.getID() == id &&
+                    p.getPassword().equals(password)) {
+                return p;
+            }
+        }
+
+        return null;
+    }
+
 }

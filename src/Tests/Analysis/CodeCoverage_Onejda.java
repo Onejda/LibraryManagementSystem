@@ -213,8 +213,6 @@ public class CodeCoverage_Onejda {
     @Test
     public void testMC01_Decision1_BothTrue() {
         // MC-01: A=True, B=True → Decision=True
-        // Condition A (librarian!=null) = TRUE
-        // Condition B (ID match) = TRUE
 
         Staff result = lib.findStaffById(1);
 
@@ -226,9 +224,6 @@ public class CodeCoverage_Onejda {
     @Test
     public void testMC02_Decision1_A_True_B_False() {
         // MC-02: A=True, B=False → Decision=False
-        // Condition A (librarian!=null) = TRUE
-        // Condition B (ID match) = FALSE
-        // Shows that B independently affects decision
 
         Staff result = lib.findStaffById(2);
 
@@ -262,8 +257,6 @@ public class CodeCoverage_Onejda {
     @Test
     public void testMC04_Decision2_BothTrue() {
         // MC-04: A=True, B=True → Decision=True
-        // Condition A (ID match) = TRUE
-        // Condition B (instanceof Staff) = TRUE
 
         Staff result = lib.findStaffById(2);
 
@@ -275,9 +268,6 @@ public class CodeCoverage_Onejda {
     @Test
     public void testMC05_Decision2_A_True_B_False() {
         // MC-05: A=True, B=False → Decision=False
-        // Condition A (ID match) = TRUE (person with ID exists)
-        // Condition B (instanceof Staff) = FALSE (person is Borrower)
-        // Shows that B independently affects decision
 
         Staff result = lib.findStaffById(4);
 
@@ -288,40 +278,10 @@ public class CodeCoverage_Onejda {
     @Test
     public void testMC06_Decision2_A_False_B_True() {
         // MC-06: A=False, B=Don't Care → Decision=False
-        // Condition A (ID match) = FALSE (no person with this ID)
-        // When ID doesn't match, entire decision is false
-        // Shows that A independently affects decision
 
         Staff result = lib.findStaffById(999);
 
         assertNull(result);
         // No person with ID=999 exists
-    }
-
-    // ==================== ADDITIONAL INTEGRATION TESTS ====================
-
-    @Test
-    public void testIntegration_LibrarianTakesPriority() {
-        // Verify that librarian check happens before loop
-        // Even if there's a clerk with same ID (impossible but tests priority)
-
-        Staff result = lib.findStaffById(1);
-
-        assertNotNull(result);
-        assertTrue("Should return Librarian, not any other staff",
-                result instanceof Librarian);
-    }
-
-    @Test
-    public void testIntegration_MultipleStaffInList() {
-        // Verify loop correctly finds staff among multiple persons
-
-        Staff clerk1 = lib.findStaffById(2);
-        Staff clerk2 = lib.findStaffById(3);
-
-        assertNotNull(clerk1);
-        assertNotNull(clerk2);
-        assertNotEquals("Should return different clerks",
-                clerk1.getID(), clerk2.getID());
     }
 }

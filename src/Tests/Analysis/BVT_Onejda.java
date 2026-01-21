@@ -5,6 +5,8 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
+// done for the method: setRequestExpiry(int)
+
 public class BVT_Onejda {
 
     @Test
@@ -22,6 +24,7 @@ public class BVT_Onejda {
         Library lib = Library.getInstance();
         lib.setRequestExpiry(0);
         assertEquals(0, lib.getHoldRequestExpiry());
+        // Documented: 0 accepted due to missing validations
     }
 
     @Test

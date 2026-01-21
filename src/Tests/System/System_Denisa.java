@@ -347,49 +347,4 @@ public class System_Denisa {
         return results;
     }
 
-    /**
-     * Helper method to print test section separator
-     */
-    private void printSeparator() {
-        System.out.println("\n" + "=".repeat(70) + "\n");
-    }
-
-    // ==================== ADDITIONAL TEST UTILITIES ====================
-
-    /**
-     * Verify borrower menu options are available
-     * This would be called after successful login in a real system
-     */
-    private boolean verifyBorrowerMenuOptions() {
-        // In a real GUI/CLI, you would check that these 6 options are displayed:
-        // 1. Search a Book
-        // 2. Place a Book on hold
-        // 3. Check Personal Info
-        // 4. Check Total Fine
-        // 5. Check Hold Requests
-        // 6. Logout
-
-        // For testing purposes, we verify the borrower has access to these functions
-        return true; // Simulated - in real system would check actual menu display
-    }
-
-    /**
-     * Simulates borrower selection from search results
-     */
-    private Book selectBookFromSearchResults(ArrayList<Book> results, int index) {
-        if (results != null && index >= 0 && index < results.size()) {
-            return results.get(index);
-        }
-        return null;
-    }
-
-    /**
-     * Verify book display format
-     */
-    private boolean verifyBookDisplayFormat(Book book) {
-        // Verify all required fields are present
-        return book.getTitle() != null && !book.getTitle().isEmpty() &&
-                book.getAuthor() != null && !book.getAuthor().isEmpty() &&
-                book.getSubject() != null && !book.getSubject().isEmpty();
-    }
 }

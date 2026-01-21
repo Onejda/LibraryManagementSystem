@@ -1,31 +1,24 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   CodeCoverage_Emi.java                              :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: emi.baloshi <emi.baloshi@learner.42.tec    +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/01/21 17:03:11 by emi.baloshi       #+#    #+#             */
-/*   Updated: 2026/01/21 17:18:21 by emi.baloshi      ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
-
 package Tests.Analysis;
 
 import LMS.*;
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.ArrayList;
+
 /**
- * Code Coverage & MC/DC Tests for testable login() method
+ * Code Coverage & MC/DC Tests for login() method
  *
- * Coverage:
+ * Coverage Achieved:
  * - Statement Coverage: 100%
  * - Branch Coverage: 100%
  * - Condition Coverage: 100%
- * - MC/DC Coverage: 100%
+ * - MC/DC Coverage: Satisfied
  *
- * Author: Denisa
+ * The testable version loginTestable(int id, String password)
+ * is used to remove Scanner dependency while preserving logic.
+ *
+ * Author: Emi
  */
 public class CodeCoverage_Emi {
 
@@ -33,120 +26,130 @@ public class CodeCoverage_Emi {
     private Librarian librarian;
     private Borrower borrower;
 
+    private String librarianPassword;
+    private String borrowerPassword;
+
     @BeforeEach
     void setUp() {
+        Library.resetInstance(); // resets static fields
+
+        //re-initialize static persons list
+        Library.persons = new ArrayList<>();
 
         library = new LibraryTestable();
 
-        // Reset static Library state
-        Library.librarian = null;
-        Library.persons.clear();
-
-        librarian = new Librarian(
-                1001,
-                "Librarian",
-                "Office",
-                123456789,
-                2500.0,
-                -1
-        );
-
-        borrower = new Borrower(
-                2001,
-                "Borrower",
-                "Address",
-                987654321
-        );
-
+        // Create Librarian
+        librarian = new Librarian(1, "Lib", "Addr", 111, 1000, -1);
         Librarian.addLibrarian(librarian);
+        librarianPassword = librarian.getPassword(); // "1"
+
+        // Create Borrower
+        borrower = new Borrower(2, "Bor", "Addr", 222);
         Library.persons.add(borrower);
+        borrowerPassword = borrower.getPassword(); // "2"
     }
 
-    /* =========================
-       STATEMENT COVERAGE
-       ========================= */
+    /*
+     * =====================================================
+     * STATEMENT COVERAGE TESTS
+     * =====================================================
+     */
 
     // SC-01: Valid librarian ID & password
     @Test
-    void testLogin_ValidLibrarian() {
-        Person result = library.login("1001", "1001");
-        assertNotNull(result);
-        assertTrue(result instanceof Librarian);
+    void SC01_ValidLibrarianLogin() {
+        Person p = library.loginTestable(1, librarianPassword);
+        assertNotNull(p);
+        assertTrue(p instanceof Librarian);
     }
 
     // SC-02: Librarian ID with wrong password
     @Test
-    void testLogin_LibrarianWrongPassword() {
-        Person result = library.login("1001", "wrong");
-        assertNull(result);
+    void SC02_LibrarianWrongPassword() {
+        Person p = library.loginTestable(1, "wrong");
+        assertNull(p);
     }
 
     // SC-03: Valid borrower ID & password
     @Test
-    void testLogin_ValidBorrower() {
-        Person result = library.login("2001", "2001");
-        assertNotNull(result);
-        assertTrue(result instanceof Borrower);
+    void SC03_ValidBorrowerLogin() {
+        Person p = library.loginTestable(2, borrowerPassword);
+        assertNotNull(p);
+        assertTrue(p instanceof Borrower);
     }
 
     // SC-04: Borrower ID with wrong password
     @Test
-    void testLogin_BorrowerWrongPassword() {
-        Person result = library.login("2001", "wrong");
-        assertNull(result);
+    void SC04_BorrowerWrongPassword() {
+        Person p = library.loginTestable(2, "wrong");
+        assertNull(p);
     }
 
-    // SC-05: Non-numeric ID
+    // SC-05: No matching ID
     @Test
-    void testLogin_NonNumericID() {
-        Person result = library.login("ABC", "any");
-        assertNull(result);
+    void SC05_NoMatchingID() {
+        Person p = library.loginTestable(99, "any");
+        assertNull(p);
     }
 
-    /* =========================
-       MC/DC – Decision 1
-       librarian != null && librarian.getID() == id
-       ========================= */
+    /*
+     * =====================================================
+     * MC/DC – Decision 1
+     * librarian != null && librarian.getID() == id
+     * =====================================================
+     */
 
-    // MC-01: True && True → TRUE
+    // MC-01: librarian != null = true, ID match = true
     @Test
-    void testMCDC_Librarian_TT() {
-        assertNotNull(library.login("1001", "1001"));
+    void MC01_LibrarianExistsAndIDMatches() {
+        Person p = library.loginTestable(1, librarianPassword);
+        assertNotNull(p);
     }
 
-    // MC-02: True && False → FALSE
+    // MC-02: librarian != null = true, ID match = false
     @Test
-    void testMCDC_Librarian_TF() {
-        assertNull(library.login("9999", "1001"));
+    void MC02_LibrarianExistsIDMismatch() {
+        Person p = library.loginTestable(99, librarianPassword);
+        assertNull(p);
     }
 
-    // MC-03: False && True → FALSE
     @Test
-    void testMCDC_Librarian_FT() {
+    void MC03_LibrarianIsNull() {
+        // Remove librarian reference
         Library.librarian = null;
-        assertNull(library.login("1001", "1001"));
+
+        // ALSO remove librarian from persons list
+        Library.persons.clear();
+
+        Person p = library.loginTestable(1, librarianPassword);
+        assertNull(p);
     }
 
-    /* =========================
-       MC/DC – Decision 2
-       p.getID() == id && password matches borrower
-       ========================= */
+    /*
+     * =====================================================
+     * MC/DC – Decision 2
+     * p.getID() == id && password matches borrower
+     * =====================================================
+     */
 
-    // MC-04: True && True → TRUE
+    // MC-04: ID match = true, password match = true
     @Test
-    void testMCDC_Borrower_TT() {
-        assertNotNull(library.login("2001", "2001"));
+    void MC04_BorrowerIDAndPasswordMatch() {
+        Person p = library.loginTestable(2, borrowerPassword);
+        assertNotNull(p);
     }
 
-    // MC-05: True && False → FALSE
+    // MC-05: ID match = true, password match = false
     @Test
-    void testMCDC_Borrower_TF() {
-        assertNull(library.login("2001", "wrong"));
+    void MC05_BorrowerPasswordMismatch() {
+        Person p = library.loginTestable(2, "wrong");
+        assertNull(p);
     }
 
-    // MC-06: False && True → FALSE
+    // MC-06: ID match = false, password match = true
     @Test
-    void testMCDC_Borrower_FT() {
-        assertNull(library.login("9999", "2001"));
+    void MC06_BorrowerIDMismatch() {
+        Person p = library.loginTestable(99, borrowerPassword);
+        assertNull(p);
     }
 }

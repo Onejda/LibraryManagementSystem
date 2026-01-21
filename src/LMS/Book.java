@@ -14,7 +14,7 @@ public class Book {
     private String title;
     private String subject;
     private String author;
-    private boolean isIssued;
+    public boolean isIssued;
     private HoldRequestOperations holdRequestsOperations;
     static int currentIdNumber = 0;
 

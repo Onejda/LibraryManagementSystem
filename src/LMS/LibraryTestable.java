@@ -5,7 +5,7 @@ import java.util.*;
 /**
  * Testable version of Library's searchForBooks method.
  * Refactored to accept parameters instead of reading from System.in
- * This allows for proper unit testing.
+ * This allows for proper testing.
  */
 public class LibraryTestable {
 

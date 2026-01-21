@@ -1,4 +1,4 @@
-package Tests.Unit;
+package Tests;
 
 import LMS.*;
 import org.junit.Before;

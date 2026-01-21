@@ -5,8 +5,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.IOException;
-
 import static org.junit.Assert.*;
 
 /**
@@ -16,7 +14,6 @@ import static org.junit.Assert.*;
 public class CodeCoverage_Onejda {
 
     private Library lib;
-    private DatabaseManager db;
 
     @Before
     public void setUp() {
@@ -24,28 +21,26 @@ public class CodeCoverage_Onejda {
         Library.resetInstance();
         lib = Library.getInstance();
 
-        // Connect to database
-        db = DatabaseManager.getInstance();
-        db.connect();
-
-        // Populate library with test data
-        try {
-            lib.populateLibrary(db.connect());
-        } catch (IOException e) {
-            fail("Failed to populate library: " + e.getMessage());
-        }
-
         // Set library configuration
         lib.setFine(20);
         lib.setRequestExpiry(7);
         lib.setReturnDeadline(5);
         lib.setName("Test Library");
+
+        // Create test data manually without database
+        Librarian librarian = new Librarian(1, "Admin", "Library Office", 5550000, 50000, 101);
+        Clerk clerk = new Clerk(2, "Jane Doe", "Front Desk", 5552345, 25000, 1);
+        Borrower borrower = new Borrower(4, "Alice Brown", "123 Student Ave", 5554567);
+
+        // Add to library WITHOUT database
+        Library.librarian = librarian;
+        Library.persons.add(clerk);
+        Library.persons.add(borrower);
     }
 
     @After
     public void tearDown() {
         // Clean up
-        db.closeConnection();
         Library.resetInstance();
     }
 
@@ -203,6 +198,22 @@ public class CodeCoverage_Onejda {
         assertNull(result);
     }
 
+    @Test
+    public void testCC07_LibrarianNull_False() {
+        // Condition: librarian != null → FALSE
+        // (No librarian in system)
+
+        // Temporarily set librarian to null
+        Library.librarian = null;
+
+        Staff result = lib.findStaffById(1);
+
+        assertNull(result);
+
+        // Note: This tests the condition where librarian is null
+        // In this case, the first condition fails and method continues to loop
+    }
+
     // ==================== MC/DC COVERAGE TESTS ====================
 
     /**
@@ -211,7 +222,7 @@ public class CodeCoverage_Onejda {
      */
 
     @Test
-    public void testMC01_Decision1_BothTrue() {
+    public void testMC01_Decision1_A_True_B_True() {
         // MC-01: A=True, B=True → Decision=True
 
         Staff result = lib.findStaffById(1);
@@ -234,18 +245,14 @@ public class CodeCoverage_Onejda {
     }
 
     @Test
-    public void testMC03_Decision1_A_False() {
+    public void testMC03_Decision1_A_False_B_DontCare() {
         // MC-03: A=False, B=Don't Care → Decision=False
-        // Condition A (librarian!=null) = FALSE
-        // When librarian is null, entire decision is false
-        // This test requires temporarily having no librarian
+        // When librarian is null, decision is false regardless of B
 
-        // Note: In the seeded database, librarian always exists
-        // This test documents that if librarian were null,
-        // the decision would be false regardless of B
+        // Set librarian to null
+        Library.librarian = null;
 
-        // We can test this with non-librarian ID
-        Staff result = lib.findStaffById(999);
+        Staff result = lib.findStaffById(1);
         assertNull(result);
     }
 
@@ -255,8 +262,9 @@ public class CodeCoverage_Onejda {
      */
 
     @Test
-    public void testMC04_Decision2_BothTrue() {
+    public void testMC04_Decision2_A_True_B_True() {
         // MC-04: A=True, B=True → Decision=True
+        // Both conditions true, decision is true
 
         Staff result = lib.findStaffById(2);
 
@@ -268,20 +276,23 @@ public class CodeCoverage_Onejda {
     @Test
     public void testMC05_Decision2_A_True_B_False() {
         // MC-05: A=True, B=False → Decision=False
+        // Person exists with matching ID but is not Staff
 
         Staff result = lib.findStaffById(4);
 
         assertNull(result);
-        // Person with ID=4 exists but is Borrower, not Staff
+        // Person with ID=4 exists (A=True) but is Borrower (B=False)
     }
 
     @Test
-    public void testMC06_Decision2_A_False_B_True() {
+    public void testMC06_Decision2_A_False_B_DontCare() {
         // MC-06: A=False, B=Don't Care → Decision=False
+        // No person with matching ID exists
 
         Staff result = lib.findStaffById(999);
 
         assertNull(result);
-        // No person with ID=999 exists
+        // No person with ID=999 exists (A=False), so decision is false
+        // regardless of whether a person would be Staff or not
     }
 }

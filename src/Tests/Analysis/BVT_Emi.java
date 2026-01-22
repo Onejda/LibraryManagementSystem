@@ -15,13 +15,17 @@ public class BVT_Emi {
     void setUp() {
         Library.resetInstance();
         library = Library.getInstance();
+
+        // assume a valid default deadline already exists
+        library.setReturnDeadline(5);
     }
 
-    // TC1 – Below minimum
+    // TC1 – Below minimum (EXPECTED TO FAIL due to no validation)
     @Test
     void TC1_BelowMinimum() {
         library.setReturnDeadline(0);
-        assertEquals(0, library.book_return_deadline);
+        assertNotEquals(0, library.book_return_deadline,
+                "Below-minimum value should not be accepted");
     }
 
     // TC2 – Minimum boundary
@@ -52,10 +56,11 @@ public class BVT_Emi {
         assertEquals(30, library.book_return_deadline);
     }
 
-    // TC6 – Above maximum
+    // TC6 – Above maximum (EXPECTED TO FAIL due to no validation)
     @Test
     void TC6_AboveMaximum() {
         library.setReturnDeadline(31);
-        assertEquals(31, library.book_return_deadline);
+        assertNotEquals(31, library.book_return_deadline,
+                "Above-maximum value should not be accepted");
     }
 }

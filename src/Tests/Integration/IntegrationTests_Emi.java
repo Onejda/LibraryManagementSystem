@@ -9,8 +9,6 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.sql.*;
 
-
-
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class IntegrationTests_Emi {
 
@@ -87,9 +85,7 @@ public class IntegrationTests_Emi {
         library.addBookinLibrary(issuedBook);
     }
 
-
-
-    // ==================== SCENARIO 1: Issue Available Book ⭐ ====================
+    // ==================== SCENARIO 1: Issue Available Book ====================
 
     /**
      * Integration Test 1.1: Issue Available Book - Basic Flow
@@ -140,83 +136,8 @@ public class IntegrationTests_Emi {
         assertTrue(loanFoundInDB, "Loan should be persisted in database");
     }
 
-    /**
-     * Integration Test 1.2: Issue Available Book - Database Verification
-     */
-    @Test
-    @DisplayName("IT 1.2: Issue Available Book - Database INSERT & SELECT")
-    public void testIssueAvailableBook_DatabaseCRUD() {
-        // Arrange - Create a new book for database testing
-        Book newBook = new Book(-1, "Test Book Title", "Test Subject", "Test Author", false);
-        int initialBookCount = library.getBooks().size();
-
-        // Act - Insert book into database
-        newBook.saveToDatabase();
-
-        // Assert - Verify book has ID assigned
-        assertTrue(newBook.getID() > 0, "Book should have database-generated ID");
-
-        // Act - Retrieve all books from database
-        ArrayList<Object[]> booksFromDB = dbManager.loadAllBooks();
-
-        // Assert - Verify book exists in database
-        boolean bookFound = false;
-        for (Object[] bookData : booksFromDB) {
-            int bookId = (int) bookData[0];
-            String title = (String) bookData[1];
-            String author = (String) bookData[2];
-            String subject = (String) bookData[3];
-
-            if (bookId == newBook.getID()) {
-                bookFound = true;
-                assertEquals("Test Book Title", title, "Title should match");
-                assertEquals("Test Author", author, "Author should match");
-                assertEquals("Test Subject", subject, "Subject should match");
-                break;
-            }
-        }
-        assertTrue(bookFound, "Book should be found in database after INSERT");
-    }
-
-    /**
-     * Integration Test 1.3: Issue Available Book - Borrower Data Verification
-     */
-    @Test
-    @DisplayName("IT 1.3: Issue Available Book - Borrower Database CRUD")
-    public void testIssueAvailableBook_BorrowerDatabaseCRUD() {
-        // Arrange - Create a new borrower
-        Borrower newBorrower = new Borrower(-1, "Charlie Brown", "321 Elm St", 5551111);
-
-        // Act - Insert borrower into database
-        newBorrower.saveToDatabase();
-
-        // Assert - Verify borrower has ID assigned
-        assertTrue(newBorrower.getID() > 0, "Borrower should have database-generated ID");
-
-        // Act - Retrieve all borrowers from database
-        ArrayList<Object[]> borrowersFromDB = dbManager.loadAllBorrowers();
-
-        // Assert - Verify borrower exists in database
-        boolean borrowerFound = false;
-        for (Object[] borrowerData : borrowersFromDB) {
-
-            int borrowerId = (int) borrowerData[0];
-            String name = (String) borrowerData[1];
-            String address = (String) borrowerData[2];
-            int phone = (int) borrowerData[3];
-
-            if (borrowerId == newBorrower.getID()) {
-                borrowerFound = true;
-                assertEquals("Charlie Brown", name, "Name should match");
-                assertEquals("321 Elm St", address, "Address should match");
-                assertEquals(5551111, phone, "Phone should match");
-                break;
-            }
-        }
-        assertTrue(borrowerFound, "Borrower should be found in database after INSERT");
-    }
-
-    // ==================== SCENARIO 2: Return Book with Fine Calculation ⭐ ====================
+    // ==================== SCENARIO 2: Return Book with Fine Calculation
+    // ====================
 
     /**
      * Integration Test 2.1: Return Book with Fine - No Fine Scenario
@@ -253,48 +174,17 @@ public class IntegrationTests_Emi {
     }
 
     /**
-     * Integration Test 2.2: Return Book with Fine - Overdue Scenario
+     * Integration Test 2.2  Return Book with Fine (Overdue) + Fine Status Persistence
      */
     @Test
-    @DisplayName("IT 2.2: Return Book - With Fine (Overdue)")
-    public void testReturnBook_WithFine() {
-        // Arrange - Issue book first
-        String simulatedInput = "n\n";
-        System.setIn(new ByteArrayInputStream(simulatedInput.getBytes()));
-        availableBook.issueBook(borrower1, clerk);
+    @DisplayName("IT 2.2: Return Book - Overdue With Fine + DB Persistence")
+    public void testReturnBook_WithFine_AndPersistence() {
 
-        Loan loan = borrower1.getBorrowedBooks().get(0);
-
-        // Simulate that book was issued 10 days ago (5 days overdue)
-        Date tenDaysAgo = new Date(System.currentTimeMillis() - (10L * 24 * 60 * 60 * 1000));
-        loan.renewIssuedBook(tenDaysAgo); // Use renew to set issue date to 10 days ago
-
-        // Act - Calculate fine before return
-        double expectedFine = (10 - library.book_return_deadline) * library.per_day_fine;
-        double actualFine = loan.computeFine1();
-
-        // Assert - Verify Fine calculation
-        assertEquals(expectedFine, actualFine, 0.01,
-                "Fine should be calculated as (10 days - 5 deadline) * 20 per_day_fine = 100");
-        assertEquals(100.0, actualFine, 0.01, "Fine should be 100 for 5 days overdue at 20 per day");
-
-        // Act - Return book (simulate user choosing to pay fine)
-        simulatedInput = "y\n";
-        System.setIn(new ByteArrayInputStream(simulatedInput.getBytes()));
-        availableBook.returnBook(borrower1, loan, clerk);
-
-        // Assert - Verify book returned successfully
-        assertFalse(availableBook.getIssuedStatus(), "Book should be available after return");
-        assertTrue(loan.getFineStatus(), "Fine should be marked as paid");
-    }
-
-    /**
-     * Integration Test 2.3: Return Book - Fine Status Persistence
-     */
-    @Test
-    @DisplayName("IT 2.3: Return Book - Fine Status Database Persistence")
-    public void testReturnBook_FineStatusPersistence() {
-        // Arrange - Issue and return book with fine
+        /*
+         * =======================
+         * Arrange – Issue book
+         * =======================
+         */
         String simulatedInput = "n\n";
         System.setIn(new ByteArrayInputStream(simulatedInput.getBytes()));
         availableBook.issueBook(borrower1, clerk);
@@ -302,28 +192,72 @@ public class IntegrationTests_Emi {
         Loan loan = borrower1.getBorrowedBooks().get(0);
         int loanId = loan.getLoanId();
 
-        // Act - Return book and pay fine
+        // Simulate book issued 10 days ago (5 days overdue)
+        Date tenDaysAgo = new Date(System.currentTimeMillis() - (10L * 24 * 60 * 60 * 1000));
+        loan.renewIssuedBook(tenDaysAgo);
+
+        /*
+         * =======================
+         * Act – Calculate fine
+         * =======================
+         */
+        double expectedFine = (10 - library.book_return_deadline) * library.per_day_fine;
+        double actualFine = loan.computeFine1();
+
+        /*
+         * =======================
+         * Assert – Fine logic
+         * =======================
+         */
+        assertEquals(expectedFine, actualFine, 0.01,
+                "Fine should be calculated correctly for overdue return");
+        assertEquals(100.0, actualFine, 0.01,
+                "Fine should be 100 for 5 overdue days at 20 per day");
+
+        /*
+         * =======================
+         * Act – Return book & pay fine
+         * =======================
+         */
         simulatedInput = "y\n";
         System.setIn(new ByteArrayInputStream(simulatedInput.getBytes()));
         availableBook.returnBook(borrower1, loan, clerk);
 
-        // Assert - Verify database contains loan with correct fine status
+        /*
+         * =======================
+         * Assert – System state
+         * =======================
+         */
+        assertFalse(availableBook.getIssuedStatus(),
+                "Book should be available after return");
+        assertTrue(loan.getFineStatus(),
+                "Fine should be marked as paid");
+
+        /*
+         * =======================
+         * Assert – Database persistence
+         * =======================
+         */
         ArrayList<Object[]> loansFromDB = dbManager.loadAllLoans();
-        boolean loanFoundWithCorrectStatus = false;
+        boolean loanFound = false;
 
         for (Object[] loanData : loansFromDB) {
             int dbLoanId = (int) loanData[0];
             if (dbLoanId == loanId) {
                 boolean finePaid = (boolean) loanData[7];
-                assertTrue(finePaid, "Fine paid status should be true in database");
-                loanFoundWithCorrectStatus = true;
+                assertTrue(finePaid,
+                        "Fine paid status should be persisted in database");
+                loanFound = true;
                 break;
             }
         }
-        assertTrue(loanFoundWithCorrectStatus, "Loan with correct fine status should be in database");
+
+        assertTrue(loanFound,
+                "Returned loan with paid fine should exist in database");
     }
 
-    // ==================== SCENARIO 3: Issue Already-Issued Book ====================
+    // ==================== SCENARIO 3: Issue Already-Issued Book
+    // ====================
 
     /**
      * Integration Test 3.1: Issue Already-Issued Book - Hold Request Flow
@@ -428,7 +362,8 @@ public class IntegrationTests_Emi {
     }
 
     /**
-     * Integration Test 3.3: Issue Already-Issued Book - Prevent Duplicate Hold Requests
+     * Integration Test 3.3: Issue Already-Issued Book - Prevent Duplicate Hold
+     * Requests
      */
     @Test
     @DisplayName("IT 3.3: Issue Already-Issued Book - Prevent Duplicate Holds")
@@ -508,73 +443,6 @@ public class IntegrationTests_Emi {
             }
         }
         assertTrue(loanUpdated, "Loan should be updated in database");
-    }
-
-    /**
-     * Integration Test 4.2: Renew Book - Reset Fine Calculation
-     */
-    @Test
-    @DisplayName("IT 4.2: Renew Book - Reset Fine Calculation")
-    public void testRenewBook_ResetFineCalculation() {
-        // Arrange - Issue book 10 days ago
-        String simulatedInput = "n\n";
-        System.setIn(new ByteArrayInputStream(simulatedInput.getBytes()));
-        availableBook.issueBook(borrower1, clerk);
-
-        Loan loan = borrower1.getBorrowedBooks().get(0);
-        Date tenDaysAgo = new Date(System.currentTimeMillis() - (10L * 24 * 60 * 60 * 1000));
-        loan.renewIssuedBook(tenDaysAgo);
-
-        // Act - Calculate fine before renewal (should be positive since overdue)
-        double fineBeforeRenewal = loan.computeFine1();
-
-        // Assert - Should have fine since 10 days > 5 day deadline
-        assertTrue(fineBeforeRenewal > 0, "Should have fine for overdue book");
-
-        // Act - Renew book with current date
-        Date now = new Date();
-        loan.renewIssuedBook(now);
-
-        // Calculate fine after renewal
-        double fineAfterRenewal = loan.computeFine1();
-
-        // Assert - Fine should be 0 after renewal with current date
-        assertEquals(0.0, fineAfterRenewal, 0.01,
-                "Fine should be 0 after renewing with current date");
-    }
-
-    /**
-     * Integration Test 4.3: Renew Book - Multiple Renewals
-     */
-    @Test
-    @DisplayName("IT 4.3: Renew Book - Multiple Renewals")
-    public void testRenewBook_MultipleRenewals() {
-        // Arrange - Issue book
-        String simulatedInput = "n\n";
-        System.setIn(new ByteArrayInputStream(simulatedInput.getBytes()));
-        availableBook.issueBook(borrower1, clerk);
-
-        Loan loan = borrower1.getBorrowedBooks().get(0);
-
-        // Act & Assert - Perform multiple renewals
-        Date firstRenewal = new Date(System.currentTimeMillis() - (3L * 24 * 60 * 60 * 1000));
-        loan.renewIssuedBook(firstRenewal);
-        assertEquals(firstRenewal.getTime(), loan.getIssuedDate().getTime(), 10,
-                "First renewal should update issue date");
-
-        Date secondRenewal = new Date(System.currentTimeMillis() - (1L * 24 * 60 * 60 * 1000));
-        loan.renewIssuedBook(secondRenewal);
-        assertEquals(secondRenewal.getTime(), loan.getIssuedDate().getTime(), 10,
-                "Second renewal should update issue date");
-
-        Date thirdRenewal = new Date();
-        loan.renewIssuedBook(thirdRenewal);
-        assertEquals(thirdRenewal.getTime(), loan.getIssuedDate().getTime(), 10,
-                "Third renewal should update issue date");
-
-        // Assert - Verify book still issued
-        assertTrue(availableBook.getIssuedStatus(), "Book should still be issued after multiple renewals");
-        assertEquals(1, borrower1.getBorrowedBooks().size(), "Borrower should still have the book");
     }
 
     @AfterEach

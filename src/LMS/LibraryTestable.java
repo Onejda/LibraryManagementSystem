@@ -116,12 +116,9 @@ public class LibraryTestable {
 
        /* =====================================================
        TESTABLE VERSION OF login()
-       Uses Library's static librarian & persons
-       Removes Scanner dependency only
        ===================================================== */
 
     /**
-     * Testable version of login()
      *
      * @param id user ID
      * @param password user password

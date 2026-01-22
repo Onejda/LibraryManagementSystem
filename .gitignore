@@ -30,4 +30,4 @@ bin/
 .DS_Store
 
 junit-platform-console-standalone-1.10.1.jar
-!**/database/library.db
+library.db

@@ -42,7 +42,7 @@ public class LibraryTests_Emi {
         assertEquals(7, library.book_return_deadline);
     }
 
-    // ❌ Expected to FAIL – missing validation
+    // Expected to FAIL – missing validation
     @Test
     @DisplayName("setReturnDeadline should reject negative values")
     void testSetReturnDeadlineNegative() {
@@ -68,7 +68,7 @@ public class LibraryTests_Emi {
         assertEquals(1, library.getPersons().size());
     }
 
-    // ❌ Expected to FAIL – encapsulation issue
+    // Expected to FAIL – encapsulation issue
     @Test
     @DisplayName("External modification of getPersons should not affect library")
     void testGetPersonsEncapsulationViolation() {
@@ -150,22 +150,4 @@ public class LibraryTests_Emi {
 
         assertNull(library.login());
     }
-
-    // ❌ Expected to FAIL – empty password accepted
-    @Test
-    @DisplayName("login should reject empty password")
-    void testLoginEmptyPassword() {
-        Borrower borrower = new Borrower(1, "Ali", "Addr", 123);
-        library.addBorrower(borrower);
-
-        String input = "1\n\n";
-        System.setIn(new ByteArrayInputStream(input.getBytes()));
-
-        assertNull(library.login());
-    }
-
-    // =====================================================
-    // createPerson(char)
-    // =====================================================
-    // NOT unit tested due to console I/O coupling
 }

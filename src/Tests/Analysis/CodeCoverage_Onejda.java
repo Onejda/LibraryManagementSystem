@@ -32,7 +32,7 @@ public class CodeCoverage_Onejda {
         Clerk clerk = new Clerk(2, "Jane Doe", "Front Desk", 5552345, 25000, 1);
         Borrower borrower = new Borrower(4, "Alice Brown", "123 Student Ave", 5554567);
 
-        // Add to library WITHOUT database
+        // Add to library without database
         Library.librarian = librarian;
         Library.persons.add(clerk);
         Library.persons.add(borrower);

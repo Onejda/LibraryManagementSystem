@@ -94,8 +94,6 @@ public class IntegrationTests_Onejda {
         assertTrue(libraryBooks.contains(book1), "Book should exist in library before search");
 
         // Step 2: Search for book by title
-        // NOTE: Library.searchForBooks() requires user input (Scanner), so simulate
-        // the search logic for automated testing.
         Book foundBook = null;
         String searchTerm = "clean code";
         for (Book b : libraryBooks) {

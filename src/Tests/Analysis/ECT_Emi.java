@@ -14,7 +14,7 @@ public class ECT_Emi {
         library = new LibraryTestable();
     }
 
-    // EC-1: 'c' → Valid Clerk
+    // EC-1: 'c' → Clerk
     @Test
     @DisplayName("EC-1: 'c' creates Clerk")
     void EC1_CreateClerk() {
@@ -25,11 +25,10 @@ public class ECT_Emi {
                 123456,
                 500.0
         );
-
         assertTrue(p instanceof Clerk);
     }
 
-    // EC-2: 'l' → Valid Librarian
+    // EC-2: 'l' → Librarian
     @Test
     @DisplayName("EC-2: 'l' creates Librarian")
     void EC2_CreateLibrarian() {
@@ -40,14 +39,13 @@ public class ECT_Emi {
                 987654,
                 800.0
         );
-
         assertTrue(p instanceof Librarian);
     }
 
-    // EC-3: 'b' → Default Borrower
+    // EC-3: 'b' → Borrower
     @Test
-    @DisplayName("EC-3: 'b' defaults to Borrower")
-    void EC3_DefaultBorrower_b() {
+    @DisplayName("EC-3: 'b' creates Borrower")
+    void EC3_CreateBorrower() {
         Person p = library.createPersonTestable(
                 'b',
                 "Charlie",
@@ -55,37 +53,21 @@ public class ECT_Emi {
                 111111,
                 0
         );
-
         assertTrue(p instanceof Borrower);
     }
 
-    // EC-4: '2' → Default Borrower
+    // EC-4: Invalid input → Excpected to FAIL
     @Test
-    @DisplayName("EC-4: '2' defaults to Borrower")
-    void EC4_DefaultBorrower_digit() {
-        Person p = library.createPersonTestable(
-                '2',
-                "Diana",
-                "Street 4",
-                222222,
-                0
-        );
-
-        assertTrue(p instanceof Borrower);
-    }
-
-    // EC-5: 'C' → Default Borrower (case-sensitive)
-    @Test
-    @DisplayName("EC-5: 'C' defaults to Borrower (case-sensitive)")
-    void EC5_DefaultBorrower_uppercase() {
-        Person p = library.createPersonTestable(
-                'C',
-                "Eve",
-                "Street 5",
-                333333,
-                0
-        );
-
-        assertTrue(p instanceof Borrower);
+    @DisplayName("EC-4: invalid character causes failure")
+    void EC4_InvalidCharacterFails() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            library.createPersonTestable(
+                    '2',
+                    "Diana",
+                    "Street 4",
+                    222222,
+                    0
+            );
+        });
     }
 }

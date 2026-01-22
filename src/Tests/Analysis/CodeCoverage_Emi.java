@@ -14,11 +14,6 @@ import java.util.ArrayList;
  * - Branch Coverage: 100%
  * - Condition Coverage: 100%
  * - MC/DC Coverage: Satisfied
- *
- * The testable version loginTestable(int id, String password)
- * is used to remove Scanner dependency while preserving logic.
- *
- * Author: Emi
  */
 public class CodeCoverage_Emi {
 

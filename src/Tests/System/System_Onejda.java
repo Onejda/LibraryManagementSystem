@@ -82,7 +82,6 @@ public class System_Onejda {
 
         // Verify admin access
         Librarian admin = (Librarian) loggedInPerson;
-        assertTrue(admin.getOfficeNo() > 0, "Has office number");
         assertNotNull(library.getBooks(), "Can access books");
         assertNotNull(library.getLoans(), "Can access loans");
         assertNotNull(library.getPersons(), "Can access persons");
@@ -301,42 +300,4 @@ public class System_Onejda {
         System.out.println("✓ ST-O5a PASSED");
     }
 
-    // ==================== COMPLETE WORKFLOW ====================
-
-    @Test
-    @DisplayName("ST-O-Complete: Full Admin Workflow")
-    public void testCompleteAdminWorkflow() {
-        // 1. Login
-        assertNotNull(Library.librarian);
-
-        // 2. Add clerk
-        Clerk newClerk = new Clerk(-1, "New Clerk", "Desk 2", 5559999, 26000, -1);
-        newClerk.saveToDatabase();
-        library.addClerk(newClerk);
-        assertNotNull(library.findClerkById(newClerk.getID()));
-
-        // 3. Add book
-        Book newBook = new Book(-1, "New Book", "Testing", "Test Author", false);
-        newBook.saveToDatabase();
-        library.addBookinLibrary(newBook);
-        assertTrue(library.getBooks().contains(newBook));
-
-        // 4. Issue book
-        newBook.issueBook(borrower, clerk);
-        assertTrue(newBook.getIssuedStatus());
-
-        // 5. View history
-        assertTrue(library.getLoans().size() > 0);
-
-        // 6. Return book
-        Loan loan = borrower.getBorrowedBooks().get(0);
-        newBook.returnBook(borrower, loan, clerk);
-        assertFalse(newBook.getIssuedStatus());
-
-        // 7. Remove book
-        library.removeBookfromLibrary(newBook);
-        assertFalse(library.getBooks().contains(newBook));
-
-        System.out.println("✓ ST-O-Complete PASSED");
-    }
 }

@@ -1,4 +1,4 @@
-package Tests;
+package Tests.Unit;
 
 import LMS.*;
 import org.junit.After;

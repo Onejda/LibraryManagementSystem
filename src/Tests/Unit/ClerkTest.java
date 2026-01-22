@@ -1,4 +1,4 @@
-package Tests;
+package Tests.Unit;
 
 import LMS.Clerk;
 import org.junit.jupiter.api.BeforeEach;

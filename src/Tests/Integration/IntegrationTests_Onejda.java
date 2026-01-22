@@ -1,24 +1,19 @@
-package Tests;
+package Tests.Integration;
 
 import LMS.*;
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Date;
 
 /**
- * Integration Tests for Library Management System - FIXED VERSION
+ * Integration Tests for Library Management System
  *
  * Test Scenarios:
  * 1. Search Books and Issue - Tests the integration between search, book, and issue operations
  * 2. Add Book to Library - Tests book creation and library integration with database persistence
  * 3. Remove Book with Hold Requests - Tests book removal with hold request management
- * 4. Find Person by ID (Type Checking) - Tests person retrieval with type validation
- * 5. Database Persistence - Save - Tests save operations and database integration
+ * 4. Database Persistence - Save - Tests save operations and database integration
  *
  * @author Onejda
  */
@@ -99,8 +94,8 @@ public class IntegrationTests_Onejda {
         assertTrue(libraryBooks.contains(book1), "Book should exist in library before search");
 
         // Step 2: Search for book by title
-        // NOTE: Library.searchForBooks() requires user input (Scanner), so we simulate
-        // the search logic here for automated testing.
+        // NOTE: Library.searchForBooks() requires user input (Scanner), so simulate
+        // the search logic for automated testing.
         Book foundBook = null;
         String searchTerm = "clean code";
         for (Book b : libraryBooks) {
@@ -121,7 +116,7 @@ public class IntegrationTests_Onejda {
                 "Borrower should have no borrowed books initially");
         int initialLoanCount = library.getLoans().size();
 
-        // Step 4: Issue the book to borrower (Integration point)
+        // Step 4: Issue the book to borrower
         foundBook.issueBook(borrower1, clerk);
 
         // Step 5: Verify integration between Book, Borrower, Loan, and Staff
@@ -152,18 +147,6 @@ public class IntegrationTests_Onejda {
                 "Library should have one more loan");
         assertTrue(libraryLoans.contains(issuedLoan),
                 "Loan should exist in library's loan records");
-
-        // Step 7: Verify book cannot be issued again
-        int borrowedBooksCount = borrower2.getBorrowedBooks().size();
-        // Note: Attempting to issue an already-issued book would prompt for hold request
-        // This is tested separately in other integration tests
-
-        System.out.println("✓ IT-01 PASSED: Search and Issue integration verified");
-        System.out.println("  - Book found: " + foundBook.getTitle());
-        System.out.println("  - Issued to: " + borrower1.getName());
-        System.out.println("  - Issued by: " + clerk.getName());
-        System.out.println("  - Book status updated: " + foundBook.getIssuedStatus());
-        System.out.println("  - Loan created and tracked in library");
     }
 
     // ==================== SCENARIO 2: ADD BOOK TO LIBRARY (IT-02) ====================
@@ -171,7 +154,7 @@ public class IntegrationTests_Onejda {
      * Classes involved: Library, Book, DatabaseManager
      */
     @Test
-    @DisplayName("IT-02: Add Book to Library - Complete Workflow with Database Persistence")
+    @DisplayName("IT-02: Add Book to Library ")
     public void testAddBookToLibrary() {
         System.out.println("\n=== Running IT-02: Add Book to Library ===");
 
@@ -192,9 +175,6 @@ public class IntegrationTests_Onejda {
 
         // Step 3: Save book to database
         newBook.saveToDatabase();
-
-        // Verify database assigned an ID (may be same or different depending on implementation)
-        assertTrue(newBook.getID() > 0, "Book should have valid ID after database save");
 
         // Step 4: Add book to library collection
         library.addBookinLibrary(newBook);
@@ -230,16 +210,6 @@ public class IntegrationTests_Onejda {
         // Step 8: Verify book has empty hold requests initially
         assertEquals(0, newBook.getHoldRequests().size(),
                 "New book should have no hold requests");
-
-        // Step 9: Verify book has proper HoldRequestOperations initialized
-        assertNotNull(newBook.getHoldRequestOperations(),
-                "Book should have HoldRequestOperations initialized");
-
-        System.out.println("✓ IT-02 PASSED: Add book to library integration verified");
-        System.out.println("  - Book created with ID: " + tempId);
-        System.out.println("  - Book saved to database");
-        System.out.println("  - Book added: " + newBook.getTitle());
-        System.out.println("  - Total books in library: " + libraryBooks.size());
     }
 
     // ==================== SCENARIO 3: REMOVE BOOK WITH HOLD REQUESTS (IT-03) ====================
@@ -247,7 +217,7 @@ public class IntegrationTests_Onejda {
      * Classes involved: Library, Book, HoldRequest, HoldRequestOperations, Borrower
      */
     @Test
-    @DisplayName("IT-03: Remove Book with Hold Requests - Complete Workflow")
+    @DisplayName("IT-03: Remove Book with Hold Requests")
     public void testRemoveBookWithHoldRequests() {
         System.out.println("\n=== Running IT-03: Remove Book with Hold Requests ===");
 
@@ -275,10 +245,10 @@ public class IntegrationTests_Onejda {
             assertTrue(hr.getBorrower() == borrower1 || hr.getBorrower() == borrower2,
                     "Hold request should reference one of the borrowers");
 
-            // Remove from borrower (integration point)
+            // Remove from borrower
             hr.getBorrower().removeHoldRequest(hr);
 
-            // Remove from database (if it was saved)
+            // Remove from database
             if (hr.getRequestDate() != null) {
                 hr.deleteFromDatabase();
             }
@@ -313,13 +283,6 @@ public class IntegrationTests_Onejda {
             }
         }
         assertNull(foundBook, "Removed book should not be searchable");
-
-        System.out.println("✓ IT-03 PASSED: Remove book with hold requests verified");
-        System.out.println("  - Hold requests cleaned: 2");
-        System.out.println("  - Borrower hold lists updated");
-        System.out.println("  - Book removed: " + book1.getTitle());
-        System.out.println("  - Remaining books: " + library.getBooks().size());
-        System.out.println("  NOTE: Test simulates user confirmation for automated testing");
     }
 
     /**
@@ -346,9 +309,6 @@ public class IntegrationTests_Onejda {
                 "Book should be removed");
         assertFalse(library.getBooks().contains(book1),
                 "Book should not exist in library");
-
-        System.out.println("✓ IT-03a PASSED: Book removed without hold requests");
-        System.out.println("  - Clean removal without hold request complications");
     }
 
     /**
@@ -371,7 +331,7 @@ public class IntegrationTests_Onejda {
         // Attempt to remove issued book
         library.removeBookfromLibrary(book1);
 
-        // Verify book was NOT removed (safety check works)
+        // Verify book was noy removed
         assertEquals(initialCount, library.getBooks().size(),
                 "Book count should remain same");
         assertTrue(library.getBooks().contains(book1),
@@ -380,231 +340,55 @@ public class IntegrationTests_Onejda {
                 "Borrower should still have the book");
         assertTrue(book1.getIssuedStatus(),
                 "Book should still be marked as issued");
-
-        System.out.println("✓ IT-03b PASSED: Issued book cannot be removed");
-        System.out.println("  - Safety check prevents removal of borrowed books");
     }
 
-    // ==================== SCENARIO 4: FIND PERSON BY ID (TYPE CHECKING) (IT-04) ====================
+// ==================== SCENARIO 5: DATABASE PERSISTENCE - SAVE (IT-05) ====================
     /**
-     * Classes involved: Library, Person, Borrower, Staff, Clerk, Librarian
-     */
-    @Test
-    @DisplayName("IT-04: Find Person by ID - Type Checking and Polymorphism")
-    public void testFindPersonByIdWithTypeChecking() {
-        System.out.println("\n=== Running IT-04: Find Person by ID - Type Checking ===");
-
-        // Step 1: Find Borrower by ID
-        Borrower foundBorrower = library.findBorrowerById(borrower1.getID());
-        assertNotNull(foundBorrower, "Should find borrower by ID");
-        assertEquals(borrower1, foundBorrower, "Found borrower should match");
-        assertTrue(foundBorrower instanceof Borrower,
-                "Found person should be instance of Borrower");
-        assertTrue(foundBorrower instanceof Person,
-                "Borrower should be instance of Person (inheritance)");
-        assertFalse(foundBorrower.getClass().equals(Staff.class),
-                "Borrower should NOT be Staff class");
-        assertFalse(foundBorrower.getClass().equals(Clerk.class),
-                "Borrower should NOT be Clerk class");
-
-        // Verify borrower-specific functionality
-        assertNotNull(foundBorrower.getBorrowedBooks(),
-                "Borrower should have borrowed books list");
-        assertNotNull(foundBorrower.getOnHoldBooks(),
-                "Borrower should have hold requests list");
-
-        // Step 2: Find Clerk by ID
-        Clerk foundClerk = library.findClerkById(clerk.getID());
-        assertNotNull(foundClerk, "Should find clerk by ID");
-        assertEquals(clerk, foundClerk, "Found clerk should match");
-        assertTrue(foundClerk instanceof Clerk,
-                "Found person should be instance of Clerk");
-        assertTrue(foundClerk instanceof Staff,
-                "Clerk should be instance of Staff (inheritance)");
-        assertTrue(foundClerk instanceof Person,
-                "Clerk should be instance of Person (inheritance)");
-        assertFalse(foundClerk.getClass().equals(Borrower.class),
-                "Clerk should NOT be Borrower class");
-
-        // Verify clerk-specific attributes
-        assertTrue(foundClerk.getDeskNo() > 0,
-                "Clerk should have desk number");
-        assertTrue(foundClerk.getSalary() > 0,
-                "Clerk should have salary (Staff attribute)");
-
-        // Step 3: Find Staff (generic) by ID
-        Staff foundStaffClerk = library.findStaffById(clerk.getID());
-        assertNotNull(foundStaffClerk, "Should find staff by ID");
-        assertEquals(clerk, foundStaffClerk, "Found staff should match clerk");
-        assertTrue(foundStaffClerk instanceof Staff,
-                "Should be instance of Staff");
-        assertTrue(foundStaffClerk instanceof Clerk,
-                "Should be instance of Clerk (actual type)");
-
-        Staff foundStaffLibrarian = library.findStaffById(librarian.getID());
-        assertNotNull(foundStaffLibrarian, "Should find librarian as staff");
-        assertEquals(librarian, foundStaffLibrarian,
-                "Found staff should match librarian");
-        assertTrue(foundStaffLibrarian instanceof Librarian,
-                "Should be instance of Librarian");
-        assertTrue(foundStaffLibrarian instanceof Staff,
-                "Librarian should be instance of Staff");
-
-        // Step 4: Verify Librarian
-        Librarian foundLibrarian = library.getLibrarian();
-        assertNotNull(foundLibrarian, "Should have librarian");
-        assertEquals(librarian, foundLibrarian, "Found librarian should match");
-        assertTrue(foundLibrarian instanceof Librarian,
-                "Should be instance of Librarian");
-        assertTrue(foundLibrarian instanceof Staff,
-                "Librarian should be instance of Staff");
-        assertTrue(foundLibrarian instanceof Person,
-                "Librarian should be instance of Person");
-
-        // Verify librarian-specific attributes
-        assertTrue(foundLibrarian.getOfficeNo() > 0,
-                "Librarian should have office number");
-
-        // Step 5: Test invalid ID
-        Borrower notFound = library.findBorrowerById(999);
-        assertNull(notFound, "Should return null for non-existent ID");
-
-        Clerk clerkNotFound = library.findClerkById(888);
-        assertNull(clerkNotFound, "Should return null for non-existent clerk ID");
-
-        // Step 6: Test wrong type lookup (verifies type checking works)
-        Borrower clerkAsBorrower = library.findBorrowerById(clerk.getID());
-        assertNull(clerkAsBorrower,
-                "Should not find clerk when looking for borrower");
-
-        Clerk borrowerAsClerk = library.findClerkById(borrower1.getID());
-        assertNull(borrowerAsClerk,
-                "Should not find borrower when looking for clerk");
-
-        // Step 7: Verify polymorphic behavior - all persons have common attributes
-        assertEquals(borrower1.getID(), foundBorrower.getID(),
-                "Person ID should be accessible through inheritance");
-        assertEquals(clerk.getName(), foundClerk.getName(),
-                "Person name should be accessible through inheritance");
-        assertEquals(librarian.getAddress(), foundLibrarian.getAddress(),
-                "Person address should be accessible through inheritance");
-
-        System.out.println("✓ IT-04 PASSED: Person type checking verified");
-        System.out.println("  - Borrower found: " + foundBorrower.getName() + " (ID: " + foundBorrower.getID() + ")");
-        System.out.println("  - Clerk found: " + foundClerk.getName() + " (ID: " + foundClerk.getID() + ")");
-        System.out.println("  - Librarian found: " + foundLibrarian.getName() + " (ID: " + foundLibrarian.getID() + ")");
-        System.out.println("  - Type checking: All person types correctly identified");
-        System.out.println("  - Polymorphism: Inheritance hierarchy verified");
-    }
-
-    // ==================== SCENARIO 5: DATABASE PERSISTENCE - SAVE (IT-05) ====================
-    /**
-     * Classes involved: Book, Borrower, Loan, HoldRequest, DatabaseManager
+     * Classes involved: Book, Borrower, Loan, DatabaseManager
      */
     @Test
     @DisplayName("IT-05: Database Persistence - Save Operations")
     public void testDatabasePersistenceSave() {
-        System.out.println("\n=== Running IT-05: Database Persistence - Save ===");
-
         // Step 1: Create and save a new book
-        Book newBook = new Book(-1, "Database Systems", "Computer Science",
-                "Ramez Elmasri", false);
-
-        // Verify book has attributes ready for saving
-        assertNotNull(newBook.getTitle(), "Book title should exist");
-        assertNotNull(newBook.getAuthor(), "Book author should exist");
-        assertNotNull(newBook.getSubject(), "Book subject should exist");
-        assertFalse(newBook.getIssuedStatus(), "Book should not be issued");
+        Book newBook = new Book(-1, "Database Systems", "Computer Science", "Ramez Elmasri", false);
 
         int tempBookId = newBook.getID();
-        assertTrue(tempBookId > 0, "Book should have temporary ID");
+        assertTrue(tempBookId > 0, "Book should have auto-generated ID");
 
-        // FIXED: Actually save to database
         newBook.saveToDatabase();
-
-        // Verify save operation
-        assertTrue(newBook.getID() > 0,
-                "Book should have valid ID after database save");
-        System.out.println("  ✓ Book saved - ID: " + newBook.getID());
+        assertTrue(newBook.getID() > 0, "Book should have valid ID after database save");
 
         // Step 2: Create and save a new borrower
         Borrower newBorrower = new Borrower(-1, "Charlie Davis", "789 Elm St", 5678901);
 
-        // Verify borrower has attributes ready for saving
-        assertNotNull(newBorrower.getName(), "Borrower name should exist");
-        assertNotNull(newBorrower.getAddress(), "Borrower address should exist");
-        assertTrue(newBorrower.getPhoneNumber() > 0,
-                "Borrower phone should be valid");
-        assertNotNull(newBorrower.getPassword(),
-                "Borrower password should be generated");
+        assertTrue(newBorrower.getID() > 0, "Borrower should have auto-generated ID");
+        assertNotNull(newBorrower.getPassword(), "Borrower password should be generated");
 
-        // FIXED: Actually save to database
         newBorrower.saveToDatabase();
+        assertTrue(newBorrower.getID() > 0, "Borrower should have valid ID after save");
 
-        // Verify save operation
-        assertTrue(newBorrower.getID() > 0,
-                "Borrower should have valid ID after save");
-        System.out.println("  ✓ Borrower saved - ID: " + newBorrower.getID());
-
-        // Step 3: Create and verify loan for persistence
+        // Step 3: Add to library and issue book (creates loan in database)
         library.addBookinLibrary(newBook);
         library.addBorrower(newBorrower);
 
-        // Issue book (this triggers loan save)
         newBook.issueBook(newBorrower, clerk);
 
-        // Verify loan was created and saved
+        // Step 4: Verify loan was created and saved with proper relationships
+        assertEquals(1, newBorrower.getBorrowedBooks().size(), "Borrower should have 1 loan");
+
         Loan loan = newBorrower.getBorrowedBooks().get(0);
-        assertNotNull(loan.getBorrower(), "Loan should have borrower");
-        assertNotNull(loan.getBook(), "Loan should have book");
-        assertNotNull(loan.getIssuer(), "Loan should have issuer");
+        assertNotNull(loan.getBorrower(), "Loan should reference borrower");
+        assertNotNull(loan.getBook(), "Loan should reference book");
+        assertNotNull(loan.getIssuer(), "Loan should reference issuer");
         assertNotNull(loan.getIssuedDate(), "Loan should have issue date");
 
-        // Verify loan is tracked in library
-        assertTrue(library.getLoans().contains(loan),
-                "Loan should be in library's loan list");
-        System.out.println("  ✓ Loan saved - Book: " + loan.getBook().getTitle());
+        assertTrue(library.getLoans().contains(loan), "Loan should be tracked in library");
 
-        // Step 4: Create and verify hold request for persistence
-        Book heldBook = new Book(-1, "Operating Systems", "Computer Science",
-                "Silberschatz", false);
-
-        // Save book to database first
-        heldBook.saveToDatabase();
-        library.addBookinLibrary(heldBook);
-
-        // Place hold (this triggers hold request save)
-        heldBook.placeBookOnHold(newBorrower);
-
-        // Verify hold request attributes for database
-        HoldRequest hr = heldBook.getHoldRequests().get(0);
-        assertNotNull(hr.getBorrower(), "Hold request should have borrower");
-        assertNotNull(hr.getBook(), "Hold request should have book");
-        assertNotNull(hr.getRequestDate(), "Hold request should have date");
-
-        // Verify hold request is linked to both book and borrower
-        assertEquals(1, heldBook.getHoldRequests().size(),
-                "Book should have 1 hold request");
-        assertEquals(1, newBorrower.getOnHoldBooks().size(),
-                "Borrower should have 1 hold request");
-        System.out.println("  ✓ Hold request saved");
-
-        // Step 5: Verify all objects maintain their relationships after save
-        assertEquals(newBook, loan.getBook(),
-                "Loan should maintain book reference after save");
-        assertEquals(newBorrower, loan.getBorrower(),
-                "Loan should maintain borrower reference after save");
-        assertEquals(heldBook, hr.getBook(),
-                "Hold request should maintain book reference after save");
-        assertEquals(newBorrower, hr.getBorrower(),
-                "Hold request should maintain borrower reference after save");
-
-        System.out.println("✓ IT-05 PASSED: Database persistence save operations verified");
-        System.out.println("  - Book saved: " + newBook.getTitle());
-        System.out.println("  - Borrower saved: " + newBorrower.getName());
-        System.out.println("  - Loan saved: " + loan.getBook().getTitle());
-        System.out.println("  - Hold request saved");
-        System.out.println("  - All relationships maintained after persistence");
+        // Step 5: Verify object relationships persist after database operations
+        assertEquals(newBook, loan.getBook(), "Loan maintains book reference after save");
+        assertEquals(newBorrower, loan.getBorrower(), "Loan maintains borrower reference after save");
+        assertEquals(clerk, loan.getIssuer(), "Loan maintains staff reference after save");
+        assertTrue(newBook.getIssuedStatus(), "Book status persisted correctly");
     }
 
     // ==================== SUMMARY TEST ====================

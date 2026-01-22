@@ -1,4 +1,4 @@
-package Tests;
+package Tests.Integration;
 
 import LMS.*;
 import org.junit.jupiter.api.*;

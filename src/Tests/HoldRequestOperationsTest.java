@@ -8,7 +8,6 @@ import java.util.Date;
 
 /**
  * Unit Tests for HoldRequestOperations
- * 10 tests
  * Covered:
  *  - addHoldRequest
  *  - removeHoldRequest
@@ -17,6 +16,7 @@ import java.util.Date;
  *  - hasHoldRequests
  *  - getHoldRequestCount
  */
+
 public class HoldRequestOperationsTest {
 
     private HoldRequestOperations ops;
@@ -150,4 +150,3 @@ public class HoldRequestOperationsTest {
         assertEquals(1, ops.getHoldRequests().size());
     }
 }
-

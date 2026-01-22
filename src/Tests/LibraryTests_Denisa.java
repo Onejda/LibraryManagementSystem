@@ -10,7 +10,7 @@ import java.util.Date;
  * Tests for Library.java – Denisa
  * 20 tests
  * Methods tested:
- *  - computeFine2(Borrower)
+ *  - computeFine2(Borrower) : on CodeCoverage_Denisa
  *  - removeBookfromLibrary(Book)
  *  - createBook(String, String, String)
  *  - setFine(double)
@@ -154,8 +154,6 @@ public class LibraryTests_Denisa {
         assertEquals(Double.MAX_VALUE, library.per_day_fine);
     }
 
-
-
     // ======================= removeBookfromLibrary =======================
 
     @Test
@@ -211,73 +209,4 @@ public class LibraryTests_Denisa {
         assertDoesNotThrow(() -> library.removeBookfromLibrary(fake));
     }
 
-
-
-    // ======================= computeFine2 =======================
-
-    @Test
-    @DisplayName("computeFine2 - No loans returns zero")
-    void testComputeFine_NoLoans() {
-        double fine = library.computeFine2(borrower);
-        assertEquals(0.0, fine);
-    }
-
-    @Test
-    @DisplayName("computeFine2 - Calculates overdue fine")
-    void testComputeFine_WithLoan() {
-        Book b = new Book(-1, "Clean Code", "SE", "Martin", false);
-        b.saveToDatabase();
-        library.addBookinLibrary(b);
-
-        // 2 days old loan
-        Date issued = new Date(System.currentTimeMillis() - 2L * 24 * 60 * 60 * 1000);
-        Date returned = new Date();
-
-        Loan loan = new Loan(borrower, b, clerk, clerk, issued, returned, false);
-        loan.saveToDatabase();
-        library.addLoan(loan);
-
-        double fine = library.computeFine2(borrower);
-
-        assertEquals(20.0, fine, 0.01);
-    }
-
-    @Test
-    @DisplayName("computeFine2 - Same day return gives zero fine")
-    void testComputeFine_SameDayReturn() {
-        Book b = new Book(-1, "Instant", "S", "A", false);
-        b.saveToDatabase();
-        library.addBookinLibrary(b);
-
-        Date now = new Date();
-        Loan loan = new Loan(borrower, b, clerk, clerk, now, now, false);
-        loan.saveToDatabase();
-        library.addLoan(loan);
-
-        double fine = library.computeFine2(borrower);
-        assertEquals(0.0, fine, 0.01);
-    }
-
-    @Test
-    @DisplayName("computeFine2 - Ignores loans of other borrowers")
-    void testComputeFine_OtherBorrowerIgnored() {
-        Borrower other = new Borrower(-1, "Other", "X", 999);
-        other.saveToDatabase();
-        library.addBorrower(other);
-
-        Book b = new Book(-1, "Book", "S", "A", false);
-        b.saveToDatabase();
-        library.addBookinLibrary(b);
-
-        Date twoDaysAgo = new Date(System.currentTimeMillis() - 2L * 24 * 60 * 60 * 1000);
-        Date now = new Date();
-
-        Loan loan = new Loan(other, b, clerk, clerk, twoDaysAgo, now, false);
-        loan.saveToDatabase();
-        library.addLoan(loan);
-
-        double fine = library.computeFine2(borrower);
-
-        assertEquals(0.0, fine);
-    }
 }

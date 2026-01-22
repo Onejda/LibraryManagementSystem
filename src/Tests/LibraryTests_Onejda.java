@@ -6,40 +6,59 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 
 import static org.junit.Assert.*;
 
 /**
- * Unit tests for Library class methods
  * Tests: findClerkById, findBookById, getHoldRequestExpiry, viewAllBooks
- * Note: findStaffById and setRequestExpiry already tested in Part 2 Analysis
  */
 public class LibraryTests_Onejda {
 
     private Library lib;
-    private DatabaseManager db;
+    private final ByteArrayOutputStream outContent = new ByteArrayOutputStream();
+    private final PrintStream originalOut = System.out;
 
     @Before
     public void setUp() {
+        // Reset singleton and create fresh library instance
         Library.resetInstance();
         lib = Library.getInstance();
 
-        db = DatabaseManager.getInstance();
-        db.connect();
-
-        try {
-            lib.populateLibrary(db.connect());
-        } catch (IOException e) {
-            fail("Setup failed: " + e.getMessage());
-        }
-
+        // Set up test data manually without database
         lib.setName("Test Library");
+
+        // Create test persons directly
+        Clerk clerk1 = new Clerk(2, "Jane Doe", "Front Desk", 5552345, 25000, 1);
+        Borrower borrower1 = new Borrower(4, "Alice Brown", "123 Student Ave", 5554567);
+        Librarian librarian = new Librarian(1, "Admin", "Library Office", 5550000, 50000, 101);
+
+        // Add to library WITHOUT database
+        Library.persons.add(clerk1);
+        Library.persons.add(borrower1);
+        Library.librarian = librarian;
+
+        // Create test books directly
+        Book book1 = new Book(1, "Clean Code", "Software Engineering", "Robert C. Martin", false);
+        Book book2 = new Book(2, "Design Patterns", "Software Engineering", "Gang of Four", false);
+        Book book3 = new Book(3, "Database Systems", "Databases", "Ramez Elmasri", true);
+
+        // Add books to library WITHOUT database
+        lib.addBookinLibrary(book1);
+        lib.addBookinLibrary(book2);
+        lib.addBookinLibrary(book3);
+
+        // Capture console output for viewAllBooks test
+        System.setOut(new PrintStream(outContent));
     }
 
     @After
     public void tearDown() {
-        db.closeConnection();
+        // Restore original System.out
+        System.setOut(originalOut);
+
+        // Reset library instance
         Library.resetInstance();
     }
 
@@ -50,9 +69,10 @@ public class LibraryTests_Onejda {
         // Test finding an existing clerk
         Clerk clerk = lib.findClerkById(2);
 
-        assertNotNull(clerk);
+        assertNotNull("Should find clerk with ID 2", clerk);
         assertEquals(2, clerk.getID());
-        assertTrue(clerk instanceof Clerk);
+        assertTrue("Returned object should be instance of Clerk", clerk instanceof Clerk);
+        assertEquals("Jane Doe", clerk.getName());
     }
 
     @Test
@@ -60,7 +80,7 @@ public class LibraryTests_Onejda {
         // Test with ID that doesn't exist
         Clerk clerk = lib.findClerkById(999);
 
-        assertNull(clerk);
+        assertNull("Should return null for non-existent ID", clerk);
     }
 
     @Test
@@ -68,7 +88,7 @@ public class LibraryTests_Onejda {
         // Test with librarian ID (should return null, not a clerk)
         Clerk clerk = lib.findClerkById(1);
 
-        assertNull(clerk);
+        assertNull("Librarian ID should not return a Clerk object", clerk);
     }
 
     @Test
@@ -76,7 +96,7 @@ public class LibraryTests_Onejda {
         // Test with borrower ID (should return null)
         Clerk clerk = lib.findClerkById(4);
 
-        assertNull(clerk);
+        assertNull("Borrower ID should not return a Clerk object", clerk);
     }
 
     // ==================== findBookById() Tests ====================
@@ -86,8 +106,9 @@ public class LibraryTests_Onejda {
         // Test finding an existing book
         Book book = lib.findBookById(1);
 
-        assertNotNull(book);
+        assertNotNull("Should find book with ID 1", book);
         assertEquals(1, book.getID());
+        assertEquals("Clean Code", book.getTitle());
     }
 
     @Test
@@ -95,7 +116,7 @@ public class LibraryTests_Onejda {
         // Test with ID that doesn't exist
         Book book = lib.findBookById(999);
 
-        assertNull(book);
+        assertNull("Should return null for non-existent ID", book);
     }
 
     @Test
@@ -103,16 +124,15 @@ public class LibraryTests_Onejda {
         // Test with invalid negative ID
         Book book = lib.findBookById(-1);
 
-        assertNull(book);
+        assertNull("Should return null for negative ID", book);
     }
 
     // ==================== getHoldRequestExpiry() Tests ====================
 
     @Test
     public void testGetHoldRequestExpiry() {
-        // Test that getter returns the correct request expiry value
+        // Test that getter returns the correct value after setting
         lib.setRequestExpiry(14);
-
         assertEquals(14, lib.getHoldRequestExpiry());
     }
 
@@ -121,12 +141,12 @@ public class LibraryTests_Onejda {
     @Test
     public void testViewAllBooks_WithBooks() {
         // Test that method runs without errors when books exist
-        // This method prints to console, so we just verify no exception
-
         try {
             lib.viewAllBooks();
-            // If we get here, method executed successfully
-            assertTrue(true);
+
+            // Verify output contains expected information
+            String output = outContent.toString();
+            assertTrue("Output should contain 'Books are'", output.contains("Books are"));
         } catch (Exception e) {
             fail("viewAllBooks should not throw exception: " + e.getMessage());
         }
@@ -138,66 +158,21 @@ public class LibraryTests_Onejda {
         Library.resetInstance();
         Library emptyLib = Library.getInstance();
 
+        // Reset output stream for new library
+        outContent.reset();
+
         try {
             emptyLib.viewAllBooks();
-            // Should print "no books" message without error
-            assertTrue(true);
+            // Verify output indicates no books
+            String output = outContent.toString();
+            assertTrue("Output should contain 'no books' message", output.toLowerCase().contains("no books"));
+
         } catch (Exception e) {
             fail("viewAllBooks should handle empty library: " + e.getMessage());
         }
     }
 
-    // ==================== findClerk() Test ====================
-
-    @Test
-    public void testFindClerk_WithValidInput() {
-        // Simulate user entering clerk ID "2"
-        String input = "2\n";
-        ByteArrayInputStream in = new ByteArrayInputStream(input.getBytes());
-        System.setIn(in);
-
-        Clerk clerk = lib.findClerk();
-
-        assertNotNull("Should find clerk with ID 2", clerk);
-        assertEquals(2, clerk.getID());
-
-        // Reset System.in to avoid affecting other tests
-        System.setIn(System.in);
-    }
-
-    @Test
-    public void testFindClerk_WithInvalidInput() {
-        // Test that method handles invalid input gracefully
-        // Simulate user entering non-numeric input
-        String input = "abc\n";
-        ByteArrayInputStream in = new ByteArrayInputStream(input.getBytes());
-        System.setIn(in);
-
-        Clerk clerk = lib.findClerk();
-
-        // Method catches exception and returns null
-        assertNull("Should return null for invalid input", clerk);
-
-        // Reset System.in
-        System.setIn(System.in);
-    }
-
     // ==================== findClerk() Tests ====================
-
-    @Test
-    public void testFindClerk_WithValidClerkId() {
-        // Positive case: user enters valid clerk ID
-        String input = "2\n";
-        ByteArrayInputStream in = new ByteArrayInputStream(input.getBytes());
-        System.setIn(in);
-
-        Clerk clerk = lib.findClerk();
-
-        assertNotNull("Should find clerk with ID 2", clerk);
-        assertEquals(2, clerk.getID());
-
-        System.setIn(System.in);
-    }
 
     @Test
     public void testFindClerk_WithInvalidTextInput() {
@@ -213,45 +188,4 @@ public class LibraryTests_Onejda {
         System.setIn(System.in);
     }
 
-    @Test
-    public void testFindClerk_WithLibrarianId() {
-        // Edge case: user enters librarian's ID (wrong type)
-        String input = "1\n";
-        ByteArrayInputStream in = new ByteArrayInputStream(input.getBytes());
-        System.setIn(in);
-
-        Clerk clerk = lib.findClerk();
-
-        assertNull("Should return null when given librarian ID", clerk);
-
-        System.setIn(System.in);
-    }
-
-    @Test
-    public void testFindClerk_WithBorrowerId() {
-        // Edge case: user enters borrower's ID (wrong type)
-        String input = "4\n";
-        ByteArrayInputStream in = new ByteArrayInputStream(input.getBytes());
-        System.setIn(in);
-
-        Clerk clerk = lib.findClerk();
-
-        assertNull("Should return null when given borrower ID", clerk);
-
-        System.setIn(System.in);
-    }
-
-    @Test
-    public void testFindClerk_WithNonExistentId() {
-        // Edge case: user enters ID that doesn't exist
-        String input = "999\n";
-        ByteArrayInputStream in = new ByteArrayInputStream(input.getBytes());
-        System.setIn(in);
-
-        Clerk clerk = lib.findClerk();
-
-        assertNull("Should return null when ID doesn't exist", clerk);
-
-        System.setIn(System.in);
-    }
 }

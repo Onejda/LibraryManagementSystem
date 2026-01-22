@@ -5,14 +5,13 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.IOException;
-
 import static org.junit.Assert.*;
+
+// Equivalence Class Testing for the method: findStaffById(int)
 
 public class ECT_Onejda {
 
     private Library lib;
-    private DatabaseManager db;
 
     @Before
     public void setUp() {
@@ -20,28 +19,26 @@ public class ECT_Onejda {
         Library.resetInstance();
         lib = Library.getInstance();
 
-        // Connect to database
-        db = DatabaseManager.getInstance();
-        db.connect();
-
-        // Populate library with test data
-        try {
-            lib.populateLibrary(db.connect());
-        } catch (IOException e) {
-            fail("Failed to populate library: " + e.getMessage());
-        }
-
         // Set library configuration
         lib.setFine(20);
         lib.setRequestExpiry(7);
         lib.setReturnDeadline(5);
         lib.setName("Test Library");
+
+        // Create test data manually without database
+        Librarian librarian = new Librarian(1, "Admin", "Library Office", 5550000, 50000, 101);
+        Clerk clerk = new Clerk(2, "Jane Doe", "Front Desk", 5552345, 25000, 1);
+        Borrower borrower = new Borrower(4, "Alice Brown", "123 Student Ave", 5554567);
+
+        // Add to library WITHOUT database
+        Library.librarian = librarian;
+        Library.persons.add(clerk);
+        Library.persons.add(borrower);
     }
 
     @After
     public void tearDown() {
         // Clean up
-        db.closeConnection();
         Library.resetInstance();
     }
 

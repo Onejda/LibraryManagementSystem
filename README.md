@@ -124,7 +124,6 @@ On first run, the system automatically seeds the database with sample data:
 - **Book Return Deadline**: 5 days
 - **Per Day Fine**: Rs. 20
 - **Hold Request Expiry**: 7 days
-- **Admin Password**: `lib`
 
 ## Login Credentials
 
